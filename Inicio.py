@@ -9,7 +9,7 @@ st.set_page_config(
 )
 
 # --- Main Application ---
-st.title("App")
+st.title("One Drop")
 
 
 # Check if the user is already logged in (using session state)
