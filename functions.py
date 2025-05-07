@@ -6,6 +6,7 @@ import pandas as pd
 # Load environment variables from .env file
 load_dotenv()
 
+
 def connect_to_supabase():
     """
     Connects to the Supabase PostgreSQL database using transaction pooler details
@@ -39,7 +40,6 @@ def connect_to_supabase():
         print(f"Error connecting to Supabase database: {e}")
         return None
 
-print(connect_to_supabase())
 
 def execute_query(query, conn=None, is_select=True):
     """
@@ -94,7 +94,7 @@ def execute_query(query, conn=None, is_select=True):
         # Rollback any changes if an error occurred during DML operation
         if conn and not is_select:
             conn.rollback()
-        return pd.DataFrame() if is_select else False
+        return pd.DataFrame() if is_select else False  
 
 def add_employee(nombre, dni, telefono, fecha_contratacion, salario):
     """
@@ -105,6 +105,3 @@ def add_employee(nombre, dni, telefono, fecha_contratacion, salario):
     params = (nombre, dni, telefono, fecha_contratacion, salario)
     
     return execute_query(query, params=params, is_select=False)
-
-
-print(connect_to_supabase())
