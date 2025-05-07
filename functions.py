@@ -104,3 +104,6 @@ def add_employee(nombre, dni, telefono, fecha_contratacion, salario):
     params = (nombre, dni, telefono, fecha_contratacion, salario)
     
     return execute_query(query, params=params, is_select=False)
+
+
+print(connect_to_supabase())
