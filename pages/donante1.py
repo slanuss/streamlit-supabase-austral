@@ -50,9 +50,9 @@ def donante_perfil():
         cumple_requisitos = st.checkbox("Declaro cumplir con los requisitos básicos para donar")
         guardar = st.form_submit_button("Guardar Perfil")
 
-        if guardar:
-    print("Función guardar_perfil_supabase llamada")
-    datos_donante = {
+    if guardar:
+     print("Función guardar_perfil_supabase llamada")
+     datos_donante = {
         "nombred": nombred,
         "mail": mail,
         "telefono": telefono,
