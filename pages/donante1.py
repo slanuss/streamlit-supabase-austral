@@ -2,25 +2,6 @@ import streamlit as st
 from supabase import create_client, Client
 import os
 
-def donante_page():
-    st.sidebar.title("Navegación Donante")
-    menu = ["Perfil", "Campañas Disponibles", "Hospitales", "Requisitos", "Manual del Donante"]
-    opcion = st.sidebar.selectbox("Selecciona una sección", menu)
-
-    if opcion == "Perfil":
-        donante_perfil()
-    elif opcion == "Campañas Disponibles":
-        donante_campanas()
-    elif opcion == "Hospitales":
-        donante_hospitales()
-    elif opcion == "Requisitos":
-        donante_requisitos()
-    elif opcion == "Manual del Donante":
-        donante_manual()
-
-if __name__ == "__main__":
-    donante_page()
-    
 # --- Configuración de Supabase ---
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
@@ -35,8 +16,8 @@ def guardar_perfil_supabase(datos_donante: dict):
     """Guarda los datos del perfil del donante en la base de datos Supabase."""
     if supabase_client:
         try:
-            data, count = supabase_client.table("donante").insert(datos_donante).execute() # <--- Cambié "donantes" a "donante"
-            st.info(f"Datos insertados en Supabase: {data}, Count: {count}") # Información de depuración
+            data, count = supabase_client.table("donante").insert(datos_donante).execute()
+            st.info(f"Datos insertados en Supabase: {data}, Count: {count}")
             if count > 0:
                 st.success("Perfil guardado en Supabase!")
                 return True
@@ -53,32 +34,31 @@ def guardar_perfil_supabase(datos_donante: dict):
 def donante_perfil():
     st.header("Perfil del Donante")
     with st.form("perfil_form"):
-        nombre_apellido = st.text_input("Nombre y Apellido")
+        nombred = st.text_input("Nombre y Apellido")
         mail = st.text_input("Mail Personal")
         telefono = st.text_input("Teléfono")
         direccion = st.text_input("Dirección")
         edad = st.number_input("Edad", min_value=18, max_value=100, step=1)
         sexo = st.selectbox("Sexo", ["Masculino", "Femenino", "Otro"])
-        tipo_sangre = st.selectbox("Tipo de Sangre", ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"])
-        antecedentes_medicos = st.text_area("Antecedentes Médicos (separados por coma o en líneas diferentes)")
-        medicado = st.radio("¿Está actualmente medicado?", ["Sí", "No"])
+        tipo_de_sangre = st.selectbox("Tipo de Sangre", ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"])
+        antecedentes = st.text_area("Antecedentes Médicos (separados por coma o en líneas diferentes)")
+        medicaciones = st.text_area("Medicaciones Actuales (separadas por coma o en líneas diferentes)")
         cumple_requisitos = st.checkbox("Declaro cumplir con los requisitos básicos para donar")
         guardar = st.form_submit_button("Guardar Perfil")
 
         if guardar:
-            print("Función guardar_perfil_supabase llamada") # Depuración
+            print("Función guardar_perfil_supabase llamada")
             datos_donante = {
-                "nombre_apellido": nombre_apellido,
+                "nombred": nombred,
                 "mail": mail,
                 "telefono": telefono,
                 "direccion": direccion,
                 "edad": edad,
                 "sexo": sexo,
-                "tipo_sangre": tipo_sangre,
-                "antecedentes_medicos": antecedentes_medicos,
-                "medicado": medicado,
+                "tipo_de_sangre": tipo_de_sangre,
+                "antecedentes": antecedentes,
+                "medicaciones": medicaciones,
                 "cumple_requisitos": cumple_requisitos,
-                # Puedes añadir más campos según la estructura de tu tabla en Supabase
             }
             guardar_perfil_supabase(datos_donante)
             st.success("Perfil guardado localmente!")
@@ -120,5 +100,4 @@ def donante_page():
         donante_manual()
 
 if __name__ == "__main__":
-    donante_page()    
-
+    donante_page()
