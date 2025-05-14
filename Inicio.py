@@ -111,15 +111,20 @@ else:
             submitted = st.form_submit_button("Login")
 
             if submitted:
-                # For this demo, any username/password is accepted
+    # Para esta demo, cualquier usuario/contraseña es aceptada
                 if username and password:
                     st.session_state["logged_in"] = True
                     st.session_state["username"] = username
-                    st.session_state["user_type"] = user_type # Store user type
-                    st.success(f"Login successful as {user_type}!")
-                    navigate_to_page(PAGES[user_type]) # Redirigir según el tipo de usuario
-                else:
-                    st.error("Por favor, ingresa tanto el usuario como la contraseña.")
+                    st.session_state["user_type"] = user_type # Guarda el tipo de usuario
+                    st.success(f"Login exitoso como {user_type}!")
+                if user_type == "Donante":
+                    navigate_to_page("donante_page")
+                elif user_type == "Hospital":
+                    navigate_to_page("hospital_page")
+                elif user_type == "Beneficiario":
+                    navigate_to_page("beneficiario_page")
+            else:
+                st.error("Por favor, ingresa tanto el usuario como la contraseña.")
     else:
         # If logged in, show a welcome message and user type
         st.success(f"Bienvenido de nuevo, {st.session_state.get('username', 'Usuario')}!")
