@@ -1,13 +1,14 @@
 import streamlit as st
 from supabase import create_client, Client
 import os
+from dotenv import load_dotenv
 
-# --- Configuración de Supabase ---
+load_dotenv()
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
-    st.error("Las variables de entorno SUPABASE_URL y SUPABASE_KEY no están configuradas.")
+    st.error("Las variables de entorno SUPABASE_URL y SUPABASE_KEY no están configuradas en el .env.")
     supabase_client = None
 else:
     supabase_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
