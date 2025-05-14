@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 # 📌 Cargar variables de entorno del archivo .env
 load_dotenv()
-SUPABASE_KEY = 'SUPABASE_CLIENT_API_KEY'
+const SUPABASE_KEY = 'SUPABASE_CLIENT_API_KEY'
 SUPABASE_URL= "https://ocqcjqltxynqsnnuvjbo.supabase.co"
 
 
