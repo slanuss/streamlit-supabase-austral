@@ -7,6 +7,9 @@ load_dotenv()
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
+st.info(f"SUPABASE_URL cargada: {SUPABASE_URL}")
+st.info(f"SUPABASE_KEY cargada: {SUPABASE_KEY}")
+
 if not SUPABASE_URL or not SUPABASE_KEY:
     st.error("Las variables de entorno SUPABASE_URL y SUPABASE_KEY no están configuradas en el .env.")
     supabase_client = None
