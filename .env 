@@ -1,0 +1,7 @@
+SUPABASE_DB_HOST= aws-0-us-east-1.pooler.supabase.com
+SUPABASE_DB_PORT= 5432
+SUPABASE_DB_NAME= postgres
+SUPABASE_DB_USER= postgres.ocqcjqltxynqsnnuvjbo
+SUPABASE_DB_PASSWORD=jhEM!dBkkWb.2PA
+
+
