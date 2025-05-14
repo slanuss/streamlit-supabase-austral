@@ -3,5 +3,9 @@ SUPABASE_DB_PORT= 5432
 SUPABASE_DB_NAME= postgres
 SUPABASE_DB_USER= postgres.ocqcjqltxynqsnnuvjbo
 SUPABASE_DB_PASSWORD=jhEM!dBkkWb.2PA
+SUPABASE_KEY = 'SUPABASE_CLIENT_API_KEY'
+SUPABASE_URL=https://ocqcjqltxynqsnnuvjbo.supabase.co
+
+
 
 
