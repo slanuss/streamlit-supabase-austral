@@ -51,21 +51,21 @@ def donante_perfil():
         guardar = st.form_submit_button("Guardar Perfil")
 
         if guardar:
-            print("Función guardar_perfil_supabase llamada")
-            datos_donante = {
-                "nombred": nombred,
-                "mail": mail,
-                "telefono": telefono,
-                "direccion": direccion,
-                "edad": edad,
-                "sexo": sexo,
-                "tipo_de_sangre": tipo_de_sangre,
-                "antecedentes": antecedentes,
-                "medicaciones": medicaciones,
-                "cumple_requisitos": cumple_requisitos,
-            }
-            guardar_perfil_supabase(datos_donante)
-            st.success("Perfil guardado localmente!")
+    print("Función guardar_perfil_supabase llamada")
+    datos_donante = {
+        "nombred": nombred,
+        "mail": mail,
+        "telefono": telefono,
+        "direccion": direccion,
+        "edad": edad,
+        "sexo": sexo[0] if sexo else None,  # Envía solo el primer carácter
+        "tipo_de_sangre": tipo_de_sangre,
+        "antecedentes": antecedentes,
+        "medicaciones": medicaciones,
+        "cumple_requisitos": cumple_requisitos,
+    }
+    guardar_perfil_supabase(datos_donante)
+    st.success("Perfil guardado localmente!")
 
 def donante_campanas():
     st.header("Campañas de Donación Disponibles")
