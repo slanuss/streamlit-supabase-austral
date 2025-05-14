@@ -105,3 +105,22 @@ def add_employee(nombre, dni, telefono, fecha_contratacion, salario):
     params = (nombre, dni, telefono, fecha_contratacion, salario)
     
     return execute_query(query, params=params, is_select=False)
+
+# ... (importaciones) ...
+
+SUPABASE_URL = os.environ.get("https://ocqcjqltxynqsnnuvjbo.supabase.co")
+SUPABASE_KEY = os.environ.get("SUPABASE_CLIENT_API_KEY")
+
+if SUPABASE_URL and SUPABASE_KEY:
+    supabase_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    try:
+        status, data = supabase_client.auth.get_user()
+        st.info(f"Conexión a Supabase exitosa. Estado: {status}")
+    except Exception as e:
+        st.error(f"Error al conectar a Supabase: {e}")
+        supabase_client = None
+else:
+    st.error("Las variables de entorno de Supabase no están configuradas.")
+    supabase_client = None
+
+# ... (resto del código) ...
