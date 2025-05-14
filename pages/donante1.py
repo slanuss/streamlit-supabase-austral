@@ -1,5 +1,36 @@
 import streamlit as st
 
+from supabase import create_client, Client
+import os  # Para acceder a variables de entorno (recomendado para la clave API)
+
+# --- Configuración de Supabase ---
+SUPABASE_URL = os.environ.get("SUPABASE_URL")  # Utiliza variables de entorno por seguridad
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    st.error("Las variables de entorno SUPABASE_URL y SUPABASE_KEY no están configuradas.")
+    supabase_client = None
+else:
+    supabase_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+def guardar_perfil_supabase(datos_donante: dict):
+    """Guarda los datos del perfil del donante en la base de datos Supabase."""
+    if supabase_client:
+        try:
+            data, count = supabase_client.table("donantes").insert(datos_donante).execute()
+            if count > 0:
+                st.success("Perfil guardado en Supabase!")
+                return True
+            else:
+                st.error("Error al guardar el perfil en Supabase.")
+                return False
+        except Exception as e:
+            st.error(f"Error de conexión o inserción en Supabase: {e}")
+            return False
+    else:
+        st.warning("No se pudo conectar a Supabase.")
+        return False
+
 def donante_perfil():
     st.header("Perfil del Donante")
     with st.form("perfil_form"):
@@ -16,19 +47,21 @@ def donante_perfil():
         guardar = st.form_submit_button("Guardar Perfil")
 
         if guardar:
-            st.success("Perfil guardado exitosamente!")
-            # Aquí podrías guardar los datos en una base de datos o similar
-            st.write("Datos guardados:")
-            st.write(f"Nombre y Apellido: {nombre_apellido}")
-            st.write(f"Mail: {mail}")
-            st.write(f"Teléfono: {telefono}")
-            st.write(f"Dirección: {direccion}")
-            st.write(f"Edad: {edad}")
-            st.write(f"Sexo: {sexo}")
-            st.write(f"Tipo de Sangre: {tipo_sangre}")
-            st.write(f"Antecedentes Médicos: {antecedentes_medicos}")
-            st.write(f"¿Medicado?: {medicado}")
-            st.write(f"Cumple Requisitos: {'Sí' if cumple_requisitos else 'No'}")
+            datos_donante = {
+                "nombre_apellido": nombre_apellido,
+                "mail": mail,
+                "telefono": telefono,
+                "direccion": direccion,
+                "edad": edad,
+                "sexo": sexo,
+                "tipo_sangre": tipo_sangre,
+                "antecedentes_medicos": antecedentes_medicos,
+                "medicado": medicado,
+                "cumple_requisitos": cumple_requisitos,
+                # Puedes añadir más campos según la estructura de tu tabla en Supabase
+            }
+            guardar_perfil_supabase(datos_donante)
+            st.success("Perfil guardado localmente!") # Mantén este mensaje
 
 def donante_campanas():
     st.header("Campañas de Donación Disponibles")
