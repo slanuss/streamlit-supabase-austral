@@ -8,9 +8,8 @@ from dotenv import load_dotenv
 
 # 📌 Cargar variables de entorno del archivo .env
 load_dotenv()
-SUPABASE_KEY = 'SUPABASE_CLIENT_API_KEY'
-SUPABASE_URL= "https://ocqcjqltxynqsnnuvjbo.supabase.co"
-
+SUPABASE_URL= https://ocqcjqltxynqsnnuvjbo.supabase.co
+SUPABASE_KEY= eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcWNqcWx0eHlucXNubnV2amJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0Mjg0MjMsImV4cCI6MjA2MTAwNDQyM30.narYL8GfGLffLvdLYd-MFz_ZXo1KD3ve2xCoTj150ps
 
 # 📌 Conectar a Supabase
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
