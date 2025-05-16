@@ -5,3 +5,4 @@ SUPABASE_DB_USER= postgres.ocqcjqltxynqsnnuvjbo
 SUPABASE_DB_PASSWORD=jhEM!dBkkWb.2PA
 SUPABASE_URL= "https://ocqcjqltxynqsnnuvjbo.supabase.co"
 SUPABASE_KEY= "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcWNqcWx0eHlucXNubnV2amJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0Mjg0MjMsImV4cCI6MjA2MTAwNDQyM30.narYL8GfGLffLvdLYd-MFz_ZXo1KD3ve2xCoTj150ps"
+
