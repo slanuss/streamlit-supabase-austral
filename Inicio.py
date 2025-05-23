@@ -1,68 +1,145 @@
+# Inicio.py
 import streamlit as st
-from pages.donante1 import donante_page
-from pages.pag1 import hospital_page  # <-- Importa la función hospital_page aquí
+import time
+import os
+from dotenv import load_dotenv
+from supabase import create_client, Client
 
-# Inicializar el estado de la sesión
-if "logged_in" not in st.session_state:
-    st.session_state["logged_in"] = False
-if "user_type" not in st.session_state:
-    st.session_state["user_type"] = None
-if "current_page" not in st.session_state:
-    st.session_state["current_page"] = "Inicio"
+# --- Configuración de la página de Streamlit ---
+st.set_page_config(
+    page_title="Plataforma de Donación de Sangre",
+    page_icon="🩸",
+    layout="centered",
+    initial_sidebar_state="auto"
+)
 
-def set_page(page_name):
-    st.session_state["current_page"] = page_name
-    st.rerun()
+# Carga las variables de entorno desde el archivo .env
+load_dotenv()
 
-if st.session_state["current_page"] == "Inicio":
-    if not st.session_state["logged_in"]:
-        with st.form("login_form"):
-            username = st.text_input("Usuario (cualquier valor)")
-            password = st.text_input("Contraseña (cualquier valor)", type="password")
-            user_type = st.radio("¿Qué tipo de usuario eres?", ["Hospital", "Donante", "Beneficiario"])
-            submitted = st.form_submit_button("Ingresar")
+# --- Configuración de Supabase ---
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
-            if submitted:
-                if username and password:
-                    st.session_state["logged_in"] = True
-                    st.session_state["user_type"] = user_type
-                    st.success(f"Ingreso exitoso como {user_type}!")
-                    if user_type == "Donante":
-                        set_page("donante1")  # Cambia la página actual a "donante1"
-                    elif user_type == "Hospital":
-                        set_page("pag1")  # Cambia la página a "pag1" para hospitales
-                    elif user_type == "Beneficiario":
-                        set_page("pag2")  # Cambia la página a "pag2" para beneficiarios
-                else:
-                    st.error("Por favor, ingresa usuario y contraseña.")
+if not SUPABASE_URL or not SUPABASE_KEY:
+    st.error("Advertencia: Las variables de entorno SUPABASE_URL y SUPABASE_KEY no están configuradas en el .env.")
+    st.info("Por favor, configúralas para que la conexión a la base de datos funcione.")
+    supabase_client: Client = None
+else:
+    try:
+        supabase_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception as e:
+        st.error(f"Error al inicializar cliente Supabase: {e}")
+        supabase_client: Client = None
+
+# --- Funciones de autenticación ---
+def verificar_credenciales_desde_db(email, password, user_type):
+    """
+    Verifica las credenciales de usuario contra tus tablas 'donante' o 'beneficiario' en Supabase.
+    Asume una contraseña simple "123" para el ejemplo.
+    ADVERTENCIA: ESTO NO ES SEGURO PARA PRODUCCIÓN. LAS CONTRASEÑAS DEBEN ESTAR HASEADAS.
+    """
+    if supabase_client is None:
+        st.error("Conexión a Supabase no disponible. No se puede verificar credenciales.")
+        return False, None, None
+
+    tabla = None
+    columna_email = "mail" 
+    
+    if user_type == "Donante":
+        tabla = "donante"
+        id_columna_db = "ID_Donante" 
+    elif user_type == "Beneficiario":
+        tabla = "beneficiario"
+        id_columna_db = "ID_Beneficiario" 
+    elif user_type == "Hospital":
+        tabla = "hospital" 
+        id_columna_db = "ID_Hospital" 
     else:
-        # Si ya está logueado, redirige directamente
-        if st.session_state["user_type"] == "Donante":
-            set_page("donante1")
-        elif st.session_state["user_type"] == "Hospital":
-            set_page("pag1")
-        elif st.session_state["user_type"] == "Beneficiario":
-            set_page("pag2")
+        st.error("Tipo de usuario no válido.")
+        return False, None, None
 
-elif st.session_state["current_page"] == "donante1":
-    donante_page()
-elif st.session_state["current_page"] == "pag1":
-    hospital_page()  # <-- Aquí se llama la función que muestra la página del hospital con el formulario
-elif st.session_state["current_page"] == "pag2":
-    st.title("Página del Beneficiario")
-    st.write("Contenido específico para beneficiarios.")
+    try:
+        response = supabase_client.table(tabla).select("*").eq(columna_email, email).limit(1).execute()
+        
+        if response.data:
+            usuario_db = response.data[0]
+            
+            # --- SIMULACIÓN DE CONTRASEÑA DE PRUEBA ---
+            if password == "123":
+                user_db_id = usuario_db.get(id_columna_db)
+                if user_db_id is None:
+                    st.warning(f"No se encontró la columna de ID '{id_columna_db}' en la tabla '{tabla}' para el usuario {email}. La aplicación podría no funcionar correctamente para funcionalidades que requieran el ID.")
+                return True, email, user_db_id
+            else:
+                st.warning("Contraseña incorrecta. La contraseña de prueba es '123'.")
+                return False, None, None
+        else:
+            st.error(f"El email '{email}' no se encontró en la tabla de {user_type}.")
+            return False, None, None
+    except Exception as e:
+        st.error(f"Error al verificar credenciales en Supabase: {e}")
+        return False, None, None
 
-# Barra lateral de navegación (si el usuario está logueado)
-if st.session_state["logged_in"]:
-    st.sidebar.title("Navegación")
-    menu = ["Inicio", "donante1", "pag1", "pag2"]
-    current_selection = st.sidebar.radio("Selecciona una página", menu, index=menu.index(st.session_state["current_page"]))
 
-    if current_selection != st.session_state["current_page"]:
-        set_page(current_selection)
+# --- Inicializa el estado de la sesión ---
+if 'logged_in' not in st.session_state:
+    st.session_state['logged_in'] = False
+if 'user_type' not in st.session_state:
+    st.session_state['user_type'] = None
+if 'user_email' not in st.session_state:
+    st.session_state['user_email'] = None
+if 'user_db_id' not in st.session_state:
+    st.session_state['user_db_id'] = None
 
-    if st.sidebar.button("Cerrar Sesión"):
-        st.session_state["logged_in"] = False
-        st.session_state["user_type"] = None
-        st.session_state["current_page"] = "Inicio"
-        st.rerun()
+
+# --- Lógica principal de la aplicación ---
+if st.session_state['logged_in']:
+    # Contenido para usuarios logueados
+    st.sidebar.button("Cerrar Sesión", on_click=lambda: st.session_state.update({'logged_in': False, 'user_type': None, 'user_email': None, 'user_db_id': None}))
+    st.sidebar.success(f"Sesión iniciada como: **{st.session_state['user_type']}**")
+    
+    st.markdown(f"<h1 style='text-align: center; color: #B22222;'>¡Bienvenido, {st.session_state['user_email']}!</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 1.2em;'>Tu aporte es vital para salvar vidas.</p>", unsafe_allow_html=True)
+    
+    # *** NO HAY IMAGEN DE BIENVENIDA AQUÍ ***
+    
+    st.write("---")
+    st.info("Utiliza el menú de la izquierda para navegar a tu perfil y gestionar tu información.")
+    st.markdown("<h3 style='color: #4682B4;'>Juntos, hacemos la diferencia.</h3>", unsafe_allow_html=True)
+
+
+else: # Si el usuario NO está logueado, muestra el formulario de inicio de sesión
+    st.markdown("<h1 style='text-align: center; color: #B22222;'>🩸 Salva Vidas, Dona Sangre 🩸</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 1.2em; color: #333333;'>Una comunidad unida por la vida. Inicia sesión para ser parte.</p>", unsafe_allow_html=True)
+    
+    st.write("---")
+
+    col1, col2, col3 = st.columns([1,2,1]) 
+
+    with col2:
+        with st.form("login_form", clear_on_submit=False):
+            st.subheader("Inicia Sesión Aquí")
+            email = st.text_input("📧 Email de Usuario", help="Debe ser un email existente en tu tabla de Donante/Beneficiario/Hospital en Supabase.") 
+            password = st.text_input("🔒 Contraseña", type="password", help="La contraseña de prueba es '123'.")
+            user_type = st.selectbox("👤 Tipo de Usuario", ["Donante", "Beneficiario", "Hospital"])
+            
+            st.write("") 
+            login_button = st.form_submit_button("Ingresar")
+
+            if login_button:
+                login_exitoso, user_email_logueado, user_db_id = verificar_credenciales_desde_db(email, password, user_type)
+                
+                if login_exitoso:
+                    st.session_state['logged_in'] = True
+                    st.session_state['user_type'] = user_type
+                    st.session_state['user_email'] = user_email_logueado
+                    st.session_state['user_db_id'] = user_db_id 
+                    st.success(f"¡Bienvenido, {user_email_logueado}! Sesión iniciada como {user_type}.")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("Inicio de sesión fallido. Revisa el email y la contraseña de prueba ('123').")
+
+    st.write("---")
+    st.markdown("<p style='text-align: center; font-size: 0.9em; color: #888888;'>¿Eres nuevo? Explora la aplicación para ver cómo puedes ayudar.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 0.8em; color: #BBBBBB;'>Recordatorio: Para un entorno real y seguro, considera usar Supabase Auth o implementar un hashing de contraseñas robusto.</p>", unsafe_allow_html=True)
