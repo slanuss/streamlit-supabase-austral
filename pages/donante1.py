@@ -48,12 +48,15 @@ def actualizar_datos_donante(donante_email, datos): # Cambiado a email como iden
     try:
         response = supabase_client.table("donante").update(datos).eq("mail", donante_email).execute() # Actualizar por mail
         if response.data:
+            st.success("✅ ¡Perfil actualizado con éxito!")
+            time.sleep(1) # Pequeña pausa para que el usuario vea el mensaje
+            st.rerun() # Recargar la página para mostrar los datos actualizados
             return True
         else:
-            st.error(f"Error al actualizar: {response.status_code} - {response.text}")
+            st.error(f"❌ Error al actualizar: {response.status_code} - {response.text}")
             return False
     except Exception as e:
-        st.error(f"Error inesperado al actualizar datos: {e}")
+        st.error(f"❌ Error inesperado al actualizar datos: {e}")
         return False
 
 # --- Funciones de Campañas (sin cambios) ---
@@ -106,42 +109,43 @@ def donante_perfil():
     perfil_existente = obtener_datos_donante(email_usuario_logueado) # Usar la función actualizada
 
     valores_iniciales = {
-        "Nombre_Apellido": "", "mail": email_usuario_logueado, "telefono": "", "direccion": "",
-        "Edad": 18, "sexo": "Masculino", "Tipo_sangre": "A+", # Nombres de columnas de tu DB
-        "Antecedentes": "", "Medicaciones": "", "Tiene_tatuajes": False, "Ultima_donacion": None
+        "nombre": "", "mail": email_usuario_logueado, "telefono": "", "direccion": "", # Cambiado: nombre
+        "edad": 18, "sexo": "Masculino", "tipo_de_sangre": "A+", # <-- CORRECCIÓN: tipo_de_sangre
+        "antecedentes": "", "medicaciones": "", "cumple_requisitos": False, "ultima_donacion": None # <-- CORRECCIÓN: antecedentes, medicaciones, cumple_requisitos, ultima_donacion
     }
+    
     if perfil_existente:
-        st.info(f"✨ Datos de perfil cargados para: **{perfil_existente.get('Nombre_Apellido', 'N/A')}**")
-        valores_iniciales["Nombre_Apellido"] = perfil_existente.get("Nombre_Apellido", "")
+        st.info(f"✨ Datos de perfil cargados para: **{perfil_existente.get('nombre', 'N/A')}**") # Cambiado: nombre
+        valores_iniciales["nombre"] = perfil_existente.get("nombre", "") # Cambiado: nombre
         valores_iniciales["mail"] = perfil_existente.get("mail", email_usuario_logueado)
         valores_iniciales["telefono"] = perfil_existente.get("telefono", "")
         valores_iniciales["direccion"] = perfil_existente.get("direccion", "")
-        valores_iniciales["Edad"] = perfil_existente.get("Edad", 18)
+        valores_iniciales["edad"] = perfil_existente.get("edad", 18) # Cambiado: edad
         
         sexo_opciones = ["Masculino", "Femenino", "Otro"]
         if perfil_existente.get("sexo") in sexo_opciones:
             valores_iniciales["sexo"] = perfil_existente.get("sexo")
 
         sangre_opciones = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
-        if perfil_existente.get("Tipo_sangre") in sangre_opciones: # Usar Tipo_sangre de tu DB
-            valores_iniciales["Tipo_sangre"] = perfil_existente.get("Tipo_sangre")
+        if perfil_existente.get("tipo_de_sangre") in sangre_opciones: # <-- CORRECCIÓN: tipo_de_sangre
+            valores_iniciales["tipo_de_sangre"] = perfil_existente.get("tipo_de_sangre") # <-- CORRECCIÓN: tipo_de_sangre
         
-        valores_iniciales["Antecedentes"] = perfil_existente.get("Antecedentes", "")
-        valores_iniciales["Medicaciones"] = perfil_existente.get("Medicaciones", "")
-        valores_iniciales["Tiene_tatuajes"] = perfil_existente.get("Tiene_tatuajes", False)
-        valores_iniciales["Ultima_donacion"] = perfil_existente.get("Ultima_donacion", None)
+        valores_iniciales["antecedentes"] = perfil_existente.get("antecedentes", "") # <-- CORRECCIÓN: antecedentes
+        valores_iniciales["medicaciones"] = perfil_existente.get("medicaciones", "") # <-- CORRECCIÓN: medicaciones
+        valores_iniciales["cumple_requisitos"] = perfil_existente.get("cumple_requisitos", False) # <-- CORRECCIÓN: cumple_requisitos
+        valores_iniciales["ultima_donacion"] = perfil_existente.get("ultima_donacion", None) # <-- CORRECCIÓN: ultima_donacion
 
 
     with st.form("perfil_form"):
         st.markdown("#### Información Personal")
         col1, col2 = st.columns(2)
         with col1:
-            nombre_apellido = st.text_input("Nombre y Apellido", value=valores_iniciales["Nombre_Apellido"])
+            nombre = st.text_input("Nombre y Apellido", value=valores_iniciales["nombre"]) # Cambiado: nombre
             mail = st.text_input("Mail Personal", value=valores_iniciales["mail"], disabled=True)
             telefono = st.text_input("Teléfono", value=valores_iniciales["telefono"])
         with col2:
             direccion = st.text_input("Dirección", value=valores_iniciales["direccion"])
-            edad = st.number_input("Edad", min_value=18, max_value=100, step=1, value=valores_iniciales["Edad"])
+            edad = st.number_input("Edad", min_value=18, max_value=100, step=1, value=valores_iniciales["edad"]) # Cambiado: edad
             
             sexo_options = ["Masculino", "Femenino", "Otro"]
             sexo_index = sexo_options.index(valores_iniciales["sexo"]) if valores_iniciales["sexo"] in sexo_options else 0
@@ -149,18 +153,20 @@ def donante_perfil():
 
         st.markdown("#### Información Médica")
         sangre_options = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
-        sangre_index = sangre_options.index(valores_iniciales["Tipo_sangre"]) if valores_iniciales["Tipo_sangre"] in sangre_options else 0
+        sangre_index = sangre_options.index(valores_iniciales["tipo_de_sangre"]) if valores_iniciales["tipo_de_sangre"] in sangre_options else 0 # <-- CORRECCIÓN: tipo_de_sangre
         tipo_de_sangre = st.selectbox("Tipo de Sangre", sangre_options, index=sangre_index)
 
-        antecedentes = st.text_area("Antecedentes Médicos (ej. alergias, cirugías previas)", value=valores_iniciales["Antecedentes"])
-        medicaciones = st.text_area("Medicaciones Actuales (ej. medicamentos que tomas)", value=valores_iniciales["Medicaciones"])
-        tiene_tatuajes = st.checkbox("¿Tienes tatuajes o perforaciones?", value=valores_iniciales["Tiene_tatuajes"])
+        antecedentes = st.text_area("Antecedentes Médicos (ej. alergias, cirugías previas)", value=valores_iniciales["antecedentes"]) # <-- CORRECCIÓN: antecedentes
+        medicaciones = st.text_area("Medicaciones Actuales (ej. medicamentos que tomas)", value=valores_iniciales["medicaciones"]) # <-- CORRECCIÓN: medicaciones
+        
+        # Cambié el checkbox a 'cumple_requisitos' si es lo que tenías en mente
+        cumple_requisitos_cb = st.checkbox("¿Cumples con los requisitos generales para donar sangre?", value=valores_iniciales["cumple_requisitos"]) # <-- CORRECCIÓN: cumple_requisitos
         
         # Manejo de la fecha de última donación
         ultima_donacion_val = None
-        if valores_iniciales["Ultima_donacion"]:
+        if valores_iniciales["ultima_donacion"]: # <-- CORRECCIÓN: ultima_donacion
             try:
-                ultima_donacion_val = datetime.strptime(str(valores_iniciales["Ultima_donacion"]).split("T")[0], "%Y-%m-%d").date()
+                ultima_donacion_val = datetime.strptime(str(valores_iniciales["ultima_donacion"]).split("T")[0], "%Y-%m-%d").date() # <-- CORRECCIÓN: ultima_donacion
             except ValueError:
                 ultima_donacion_val = None # Si el formato no es válido, no precargar
         
@@ -171,16 +177,24 @@ def donante_perfil():
 
         if guardar:
             datos_a_guardar = {
-                "Nombre_Apellido": nombre_apellido, "mail": mail, "telefono": telefono, "direccion": direccion,
-                "Edad": edad, "sexo": sexo, "Tipo_sangre": tipo_de_sangre, # Usar Tipo_sangre
-                "Antecedentes": antecedentes, "Medicaciones": medicaciones,
-                "Tiene_tatuajes": tiene_tatuajes, "Ultima_donacion": ultima_donacion_date_input.isoformat()
+                "nombre": nombre, "mail": mail, "telefono": telefono, "direccion": direccion, # Cambiado: nombre
+                "edad": edad, "sexo": sexo, "tipo_de_sangre": tipo_de_sangre, # <-- CORRECCIÓN: edad, tipo_de_sangre
+                "antecedentes": antecedentes, "medicaciones": medicaciones, # <-- CORRECCIÓN: antecedentes, medicaciones
+                "cumple_requisitos": cumple_requisitos_cb, # <-- CORRECCIÓN: cumple_requisitos_cb
+                "ultima_donacion": ultima_donacion_date_input.isoformat() # <-- CORRECCIÓN: ultima_donacion
             }
             if perfil_existente:
                 actualizar_datos_donante(mail, datos_a_guardar) # Actualizar usando mail
             else:
-                # Si no existe, insertar (asumiendo que 'mail' es único)
-                guardar_perfil_supabase(datos_a_guardar, actualizar=False) # No es actualizar, es insertar
+                # Si el perfil no existe, deberías tener una función de inserción (creación de nuevo donante)
+                # Esta parte NO estaba implementada en tu código original para insertar un donante nuevo.
+                # Asumo que el flujo de login ya crea el registro básico o que los donantes ya existen.
+                # Si necesitas crear donantes nuevos desde aquí, deberías implementar una función de inserción.
+                st.warning("⚠️ La funcionalidad para crear un nuevo perfil de donante aún no está implementada aquí.")
+                st.info("Por favor, asegúrate de que el donante ya exista en la base de datos para poder actualizar su perfil.")
+                # Ejemplo de cómo sería una función de inserción (necesitaría ser definida):
+                # insertar_nuevo_donante(datos_a_guardar) 
+
 
 # --- Funciones de Campañas y Hospitales (Hospitales sin mapa) ---
 def donante_campanas():
