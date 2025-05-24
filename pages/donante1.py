@@ -109,14 +109,14 @@ def donante_perfil():
     perfil_existente = obtener_datos_donante(email_usuario_logueado) # Usar la función actualizada
 
     valores_iniciales = {
-        "nombred": "", "mail": email_usuario_logueado, "telefono": "", "direccion": "", # <-- CORRECCIÓN: nombred
+        "nombred": "", "mail": email_usuario_logueado, "telefono": "", "direccion": "",
         "edad": 18, "sexo": "Masculino", "tipo_de_sangre": "A+",
-        "antecedentes": "", "medicaciones": "", "cumple_requisitos": False, "ultima_donacion": None
+        "antecedentes": "", "medicaciones": "", "cumple_requisitos": False, "Ultima_donacion": None # <-- CORRECCIÓN: Ultima_donacion
     }
     
     if perfil_existente:
-        st.info(f"✨ Datos de perfil cargados para: **{perfil_existente.get('nombred', 'N/A')}**") # <-- CORRECCIÓN: nombred
-        valores_iniciales["nombred"] = perfil_existente.get("nombred", "") # <-- CORRECCIÓN: nombred
+        st.info(f"✨ Datos de perfil cargados para: **{perfil_existente.get('nombred', 'N/A')}**")
+        valores_iniciales["nombred"] = perfil_existente.get("nombred", "")
         valores_iniciales["mail"] = perfil_existente.get("mail", email_usuario_logueado)
         valores_iniciales["telefono"] = perfil_existente.get("telefono", "")
         valores_iniciales["direccion"] = perfil_existente.get("direccion", "")
@@ -133,14 +133,14 @@ def donante_perfil():
         valores_iniciales["antecedentes"] = perfil_existente.get("antecedentes", "")
         valores_iniciales["medicaciones"] = perfil_existente.get("medicaciones", "")
         valores_iniciales["cumple_requisitos"] = perfil_existente.get("cumple_requisitos", False)
-        valores_iniciales["ultima_donacion"] = perfil_existente.get("ultima_donacion", None)
+        valores_iniciales["Ultima_donacion"] = perfil_existente.get("Ultima_donacion", None) # <-- CORRECCIÓN: Ultima_donacion
 
 
     with st.form("perfil_form"):
         st.markdown("#### Información Personal")
         col1, col2 = st.columns(2)
         with col1:
-            nombre = st.text_input("Nombre y Apellido", value=valores_iniciales["nombred"]) # <-- CORRECCIÓN: nombred
+            nombre = st.text_input("Nombre y Apellido", value=valores_iniciales["nombred"])
             mail = st.text_input("Mail Personal", value=valores_iniciales["mail"], disabled=True)
             telefono = st.text_input("Teléfono", value=valores_iniciales["telefono"])
         with col2:
@@ -163,9 +163,9 @@ def donante_perfil():
         
         # Manejo de la fecha de última donación
         ultima_donacion_val = None
-        if valores_iniciales["ultima_donacion"]:
+        if valores_iniciales["Ultima_donacion"]: # <-- CORRECCIÓN: Ultima_donacion
             try:
-                ultima_donacion_val = datetime.strptime(str(valores_iniciales["ultima_donacion"]).split("T")[0], "%Y-%m-%d").date()
+                ultima_donacion_val = datetime.strptime(str(valores_iniciales["Ultima_donacion"]).split("T")[0], "%Y-%m-%d").date() # <-- CORRECCIÓN: Ultima_donacion
             except ValueError:
                 ultima_donacion_val = None # Si el formato no es válido, no precargar
         
@@ -176,11 +176,11 @@ def donante_perfil():
 
         if guardar:
             datos_a_guardar = {
-                "nombred": nombre, "mail": mail, "telefono": telefono, "direccion": direccion, # <-- CORRECCIÓN: nombred
+                "nombred": nombre, "mail": mail, "telefono": telefono, "direccion": direccion,
                 "edad": edad, "sexo": sexo, "tipo_de_sangre": tipo_de_sangre,
                 "antecedentes": antecedentes, "medicaciones": medicaciones,
                 "cumple_requisitos": cumple_requisitos_cb,
-                "ultima_donacion": ultima_donacion_date_input.isoformat()
+                "Ultima_donacion": ultima_donacion_date_input.isoformat() # <-- CORRECCIÓN: Ultima_donacion
             }
             if perfil_existente:
                 actualizar_datos_donante(mail, datos_a_guardar)
