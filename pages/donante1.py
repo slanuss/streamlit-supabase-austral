@@ -5,7 +5,7 @@ import time
 import os
 from dotenv import load_dotenv
 from supabase import create_client, Client
-from datetime import datetime # Necesario para fechas de campañas
+from datetime import datetime # Necesario para fechas de campañas, pero no para ultima_donacion si la eliminamos
 
 # Carga las variables de entorno desde el archivo .env
 load_dotenv()
@@ -53,6 +53,7 @@ def actualizar_datos_donante(donante_email, datos): # Cambiado a email como iden
             st.rerun() # Recargar la página para mostrar los datos actualizados
             return True
         else:
+            # Captura el error de Supabase para depuración
             st.error(f"❌ Error al actualizar: {response.status_code} - {response.text}")
             return False
     except Exception as e:
@@ -111,7 +112,7 @@ def donante_perfil():
     valores_iniciales = {
         "nombred": "", "mail": email_usuario_logueado, "telefono": "", "direccion": "",
         "edad": 18, "sexo": "Masculino", "tipo_de_sangre": "A+",
-        "antecedentes": "", "medicaciones": "", "cumple_requisitos": False, "ultimadonacion": None # <-- CORRECCIÓN: ultimadonacion
+        "antecedentes": "", "medicaciones": "", "cumple_requisitos": False # <-- ELIMINADO: ultimadonacion
     }
     
     if perfil_existente:
@@ -123,8 +124,15 @@ def donante_perfil():
         valores_iniciales["edad"] = perfil_existente.get("edad", 18)
         
         sexo_opciones = ["Masculino", "Femenino", "Otro"]
-        if perfil_existente.get("sexo") in sexo_opciones:
+        # Asegurarse de que el valor inicial para sexo sea compatible
+        if perfil_existente.get("sexo") and perfil_existente.get("sexo") in sexo_opciones:
             valores_iniciales["sexo"] = perfil_existente.get("sexo")
+        # Si sexo es solo 'M' o 'F' en la DB, ajusta la lógica aquí
+        elif perfil_existente.get("sexo") == 'M':
+            valores_iniciales["sexo"] = "Masculino"
+        elif perfil_existente.get("sexo") == 'F':
+            valores_iniciales["sexo"] = "Femenino"
+
 
         sangre_opciones = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
         if perfil_existente.get("tipo_de_sangre") in sangre_opciones:
@@ -133,7 +141,7 @@ def donante_perfil():
         valores_iniciales["antecedentes"] = perfil_existente.get("antecedentes", "")
         valores_iniciales["medicaciones"] = perfil_existente.get("medicaciones", "")
         valores_iniciales["cumple_requisitos"] = perfil_existente.get("cumple_requisitos", False)
-        valores_iniciales["ultimadonacion"] = perfil_existente.get("ultimadonacion", None) # <-- CORRECCIÓN: ultimadonacion
+        # <-- ELIMINADO: valores_iniciales["ultimadonacion"]
 
 
     with st.form("perfil_form"):
@@ -161,15 +169,14 @@ def donante_perfil():
         
         cumple_requisitos_cb = st.checkbox("¿Cumples con los requisitos generales para donar sangre?", value=valores_iniciales["cumple_requisitos"])
         
-        # Manejo de la fecha de última donación
-        ultima_donacion_val = None
-        if valores_iniciales["ultimadonacion"]: # <-- CORRECCIÓN: ultimadonacion
-            try:
-                ultima_donacion_val = datetime.strptime(str(valores_iniciales["ultimadonacion"]).split("T")[0], "%Y-%m-%d").date() # <-- CORRECCIÓN: ultimadonacion
-            except ValueError:
-                ultima_donacion_val = None # Si el formato no es válido, no precargar
-        
-        ultima_donacion_date_input = st.date_input("Fecha de Última Donación", value=ultima_donacion_val if ultima_donacion_val else datetime.today().date())
+        # <-- ELIMINADO: Campo de fecha de última donación
+        # ultima_donacion_val = None
+        # if valores_iniciales["ultimadonacion"]:
+        #     try:
+        #         ultima_donacion_val = datetime.strptime(str(valores_iniciales["ultimadonacion"]).split("T")[0], "%Y-%m-%d").date()
+        #     except ValueError:
+        #         ultima_donacion_val = None
+        # ultima_donacion_date_input = st.date_input("Fecha de Última Donación", value=ultima_donacion_val if ultima_donacion_val else datetime.today().date())
 
         st.write("---")
         guardar = st.form_submit_button("💾 Guardar Perfil" if not perfil_existente else "🔄 Actualizar Perfil")
@@ -180,8 +187,11 @@ def donante_perfil():
                 "edad": edad, "sexo": sexo, "tipo_de_sangre": tipo_de_sangre,
                 "antecedentes": antecedentes, "medicaciones": medicaciones,
                 "cumple_requisitos": cumple_requisitos_cb,
-                "ultimadonacion": ultima_donacion_date_input.isoformat() # <-- CORRECCIÓN: ultimadonacion
+                # <-- ELIMINADO: "ultimadonacion": ultima_donacion_date_input.isoformat()
             }
+            # *** Debugging para ver los datos antes de enviar ***
+            st.write("Datos a guardar:", datos_a_guardar)
+            # ***************************************************
             if perfil_existente:
                 actualizar_datos_donante(mail, datos_a_guardar)
             else:
@@ -189,7 +199,7 @@ def donante_perfil():
                 st.info("Por favor, asegúrate de que el donante ya exista en la base de datos para poder actualizar su perfil.")
 
 
-# --- Funciones de Campañas y Hospitales (Hospitales sin mapa) ---
+# --- Funciones de Campañas y Hospitales (sin cambios) ---
 def donante_campanas():
     st.markdown("<h2 style='color: #B22222;'>Campañas de Donación Disponibles ❤️</h2>", unsafe_allow_html=True)
     st.write("Aquí puedes explorar las solicitudes de donación de sangre y ofrecer tu ayuda.")
@@ -283,3 +293,4 @@ if __name__ == "__main__":
             st.session_state['logged_in'] = False
             st.session_state['user_type'] = None
             st.rerun()
+            
