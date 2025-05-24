@@ -111,7 +111,7 @@ def donante_perfil():
     valores_iniciales = {
         "nombred": "", "mail": email_usuario_logueado, "telefono": "", "direccion": "",
         "edad": 18, "sexo": "Masculino", "tipo_de_sangre": "A+",
-        "antecedentes": "", "medicaciones": "", "cumple_requisitos": False, "Ultima_donacion": None # <-- CORRECCIÓN: Ultima_donacion
+        "antecedentes": "", "medicaciones": "", "cumple_requisitos": False, "ultimadonacion": None # <-- CORRECCIÓN AQUÍ
     }
     
     if perfil_existente:
@@ -133,7 +133,7 @@ def donante_perfil():
         valores_iniciales["antecedentes"] = perfil_existente.get("antecedentes", "")
         valores_iniciales["medicaciones"] = perfil_existente.get("medicaciones", "")
         valores_iniciales["cumple_requisitos"] = perfil_existente.get("cumple_requisitos", False)
-        valores_iniciales["Ultima_donacion"] = perfil_existente.get("Ultima_donacion", None) # <-- CORRECCIÓN: Ultima_donacion
+        valores_iniciales["ultimadonacion"] = perfil_existente.get("ultimadonacion", None) # <-- CORRECCIÓN AQUÍ
 
 
     with st.form("perfil_form"):
@@ -163,9 +163,9 @@ def donante_perfil():
         
         # Manejo de la fecha de última donación
         ultima_donacion_val = None
-        if valores_iniciales["Ultima_donacion"]: # <-- CORRECCIÓN: Ultima_donacion
+        if valores_iniciales["ultimadonacion"]: # <-- CORRECCIÓN AQUÍ
             try:
-                ultima_donacion_val = datetime.strptime(str(valores_iniciales["Ultima_donacion"]).split("T")[0], "%Y-%m-%d").date() # <-- CORRECCIÓN: Ultima_donacion
+                ultima_donacion_val = datetime.strptime(str(valores_iniciales["ultimadonacion"]).split("T")[0], "%Y-%m-%d").date() # <-- CORRECCIÓN AQUÍ
             except ValueError:
                 ultima_donacion_val = None # Si el formato no es válido, no precargar
         
@@ -180,7 +180,7 @@ def donante_perfil():
                 "edad": edad, "sexo": sexo, "tipo_de_sangre": tipo_de_sangre,
                 "antecedentes": antecedentes, "medicaciones": medicaciones,
                 "cumple_requisitos": cumple_requisitos_cb,
-                "Ultima_donacion": ultima_donacion_date_input.isoformat() # <-- CORRECCIÓN: Ultima_donacion
+                "ultimadonacion": ultima_donacion_date_input.isoformat() # <-- CORRECCIÓN AQUÍ
             }
             if perfil_existente:
                 actualizar_datos_donante(mail, datos_a_guardar)
