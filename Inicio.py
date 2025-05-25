@@ -26,7 +26,7 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     st.error("Advertencia: Las variables de entorno SUPABASE_URL y SUPABASE_KEY no están configuradas en el .env.")
-    st.info("Por favor, configúralas para que la conexión a la base de datos funcione.")
+    st.info("Por favor, confíguralas para que la conexión a la base de datos funcione.")
     supabase_client: Client = None
 else:
     try:
@@ -51,34 +51,43 @@ def verificar_credenciales_desde_db(email, password, user_type):
     
     if user_type == "Donante":
         tabla = "donante"
-        id_columna_db = "ID_Donante" 
+        id_columna_db = "id_donante" # Asegúrate de que esta sea la columna de ID en tu tabla donante
     elif user_type == "Beneficiario":
         tabla = "beneficiario"
-        id_columna_db = "ID_Beneficiario" 
-    elif user_type == "Hospital": # <-- ¡NUEVO!
+        id_columna_db = "id_beneficiario" # Asegúrate de que esta sea la columna de ID en tu tabla beneficiario
+    elif user_type == "Hospital": 
         tabla = "hospital"
-        id_columna_db = "ID_Hospital" # Asegúrate de que esta columna exista en tu tabla 'hospital'
+        id_columna_db = "id_hospital" # <-- ¡CORREGIDO! Asegúrate de que esta columna exista en tu tabla 'hospital'
     else:
         st.error("Tipo de usuario no válido.")
         return False, None, None
 
     try:
-        response = supabase_client.table(tabla).select("*").eq(columna_email, email).limit(1).execute()
+        # Aquí también es importante que la contraseña sea la correcta (contrafija)
+        response = supabase_client.table(tabla).select("*").eq(columna_email, email).eq("contrafija", password).limit(1).execute()
         
         if response.data:
             usuario_db = response.data[0]
             
             # --- SIMULACIÓN DE CONTRASEÑA DE PRUEBA ---
-            if password == "123":
-                user_db_id = usuario_db.get(id_columna_db)
-                if user_db_id is None:
-                    st.warning(f"No se encontró la columna de ID '{id_columna_db}' en la tabla '{tabla}' para el usuario {email}. La aplicación podría no funcionar correctamente para funcionalidades que requieran el ID.")
-                return True, email, user_db_id
-            else:
-                st.warning("Contraseña incorrecta. La contraseña de prueba es '123'.")
-                return False, None, None
+            # En tu caso, ya estás usando "contrafija", lo cual es mejor que una contraseña fija en el código
+            # Sin embargo, '123' es la contraseña de prueba que el formulario de login sugiere.
+            # Asegúrate que 'contrafija' en Supabase para el usuario 'hospital1@email.com' sea 'hosp1'
+            # o la que estés utilizando en tu tabla.
+            
+            # La condición 'password == "123"' puede estar simplificando demasiado si 'contrafija' es diferente.
+            # Si 'contrafija' es 'hosp1' para 'hospital1@email.com', deberías ingresar 'hosp1' en la app.
+            
+            # Si la verificación eq("contrafija", password) ya pasó, entonces la contraseña es correcta
+            user_db_id = usuario_db.get(id_columna_db)
+
+            if user_db_id is None:
+                st.warning(f"No se encontró la columna de ID '{id_columna_db}' en la tabla '{tabla}' para el usuario {email}. La aplicación podría no funcionar correctamente para funcionalidades que requieran el ID.")
+                return False, None, None # Fallar si no hay ID
+            
+            return True, email, user_db_id
         else:
-            st.error(f"El email '{email}' no se encontró en la tabla de {user_type}.")
+            st.error(f"El email '{email}' o la contraseña no son correctos para el tipo de usuario {user_type}.")
             return False, None, None
     except Exception as e:
         st.error(f"Error al verificar credenciales en Supabase: {e}")
@@ -105,20 +114,18 @@ if st.session_state['logged_in']:
     st.markdown(f"<h1 style='text-align: center; color: #B22222;'>¡Bienvenido, {st.session_state['user_email']}!</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; font-size: 1.2em;'>Tu aporte es vital para salvar vidas.</p>", unsafe_allow_html=True)
     
-    # Esto ya no muestra la "Bienvenida" estática, sino que carga la página específica del rol.
-    # st.write("---")
-    # st.info("Utiliza el menú de la izquierda para navegar a tu perfil y gestionar tu información.")
-    # st.markdown("<h3 style='color: #4682B4;'>Juntos, hacemos la diferencia.</h3>", unsafe_allow_html=True)
-
-    # --- Redirección a la página específica del rol ---
+    # Redirección a la página específica del rol.
+    # El contenido de la página 'hospital' ya tiene su propio selectbox de navegación lateral.
     if st.session_state['user_type'] == 'Donante':
-        donante_page.donante_perfil() # Carga la función principal de la página del donante
+        donante_page.donante_perfil() # Asume que donante_page.py tiene una función principal llamada donante_perfil
     elif st.session_state['user_type'] == 'Beneficiario':
-        # Asegúrate de tener un archivo 'pages/beneficiario.py' con una función 'beneficiario_perfil()'
-        # beneficiario_page.beneficiario_perfil() 
+        # Aquí debería ir la función principal de la página del beneficiario
+        # Por ahora, un mensaje de desarrollo
         st.info("Funcionalidad para Beneficiarios en desarrollo. ¡Bienvenido!")
-    elif st.session_state['user_type'] == 'Hospital': # <-- ¡NUEVO!
-        hospital_page.hospital_perfil() # Carga la función principal de la página del hospital
+        # Si tienes una página 'beneficiario.py' con 'beneficiario_perfil()', descomenta la siguiente línea:
+        # beneficiario_page.beneficiario_perfil() 
+    elif st.session_state['user_type'] == 'Hospital':
+        hospital_page.hospital_perfil() # Asume que hospital_page.py tiene una función principal llamada hospital_perfil
     else:
         st.error("Tipo de usuario no reconocido. Por favor, contacta al soporte.")
 
@@ -135,8 +142,10 @@ else: # Si el usuario NO está logueado, muestra el formulario de inicio de sesi
         with st.form("login_form", clear_on_submit=False):
             st.subheader("Inicia Sesión Aquí")
             email = st.text_input("📧 Email de Usuario", help="Debe ser un email existente en tu tabla de Donante/Beneficiario/Hospital en Supabase.") 
-            password = st.text_input("🔒 Contraseña", type="password", help="La contraseña de prueba es '123'.")
-            user_type = st.selectbox("👤 Tipo de Usuario", ["Donante", "Beneficiario", "Hospital"]) # <-- "Hospital" añadido
+            # IMPORTANTE: La contraseña '123' es solo una SUGERENCIA.
+            # Debes usar la 'contrafija' real de tu base de datos para cada usuario.
+            password = st.text_input("🔒 Contraseña", type="password", help="Usa la 'contrafija' de tu tabla de usuario (ej. 'hosp1' para hospital1@email.com).")
+            user_type = st.selectbox("👤 Tipo de Usuario", ["Donante", "Beneficiario", "Hospital"]) 
             
             st.write("") 
             login_button = st.form_submit_button("Ingresar")
@@ -153,7 +162,8 @@ else: # Si el usuario NO está logueado, muestra el formulario de inicio de sesi
                     time.sleep(1)
                     st.rerun()
                 else:
-                    st.error("Inicio de sesión fallido. Revisa el email y la contraseña de prueba ('123').")
+                    # El mensaje de error ya se muestra dentro de verificar_credenciales_desde_db
+                    pass # No hacer nada aquí para evitar mensajes duplicados o confusos.
 
     st.write("---")
     st.markdown("<p style='text-align: center; font-size: 0.9em; color: #888888;'>¿Eres nuevo? Explora la aplicación para ver cómo puedes ayudar.</p>", unsafe_allow_html=True)
