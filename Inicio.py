@@ -1,9 +1,13 @@
-# Inicio.py
 import streamlit as st
 import time
 import os
 from dotenv import load_dotenv
 from supabase import create_client, Client
+
+# Importar las páginas de los roles
+import pages.donante1 as donante_page # Asegúrate de que este archivo exista en 'pages'
+# import pages.beneficiario as beneficiario_page # Si tienes una página de beneficiario, descomenta
+import pages.hospital as hospital_page # <-- ¡NUEVO! Importa la página del hospital
 
 # --- Configuración de la página de Streamlit ---
 st.set_page_config(
@@ -34,7 +38,7 @@ else:
 # --- Funciones de autenticación ---
 def verificar_credenciales_desde_db(email, password, user_type):
     """
-    Verifica las credenciales de usuario contra tus tablas 'donante' o 'beneficiario' en Supabase.
+    Verifica las credenciales de usuario contra tus tablas 'donante', 'beneficiario' o 'hospital' en Supabase.
     Asume una contraseña simple "123" para el ejemplo.
     ADVERTENCIA: ESTO NO ES SEGURO PARA PRODUCCIÓN. LAS CONTRASEÑAS DEBEN ESTAR HASEADAS.
     """
@@ -51,9 +55,9 @@ def verificar_credenciales_desde_db(email, password, user_type):
     elif user_type == "Beneficiario":
         tabla = "beneficiario"
         id_columna_db = "ID_Beneficiario" 
-    elif user_type == "Hospital":
-        tabla = "hospital" 
-        id_columna_db = "ID_Hospital" 
+    elif user_type == "Hospital": # <-- ¡NUEVO!
+        tabla = "hospital"
+        id_columna_db = "ID_Hospital" # Asegúrate de que esta columna exista en tu tabla 'hospital'
     else:
         st.error("Tipo de usuario no válido.")
         return False, None, None
@@ -101,11 +105,22 @@ if st.session_state['logged_in']:
     st.markdown(f"<h1 style='text-align: center; color: #B22222;'>¡Bienvenido, {st.session_state['user_email']}!</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; font-size: 1.2em;'>Tu aporte es vital para salvar vidas.</p>", unsafe_allow_html=True)
     
-    # *** NO HAY IMAGEN DE BIENVENIDA AQUÍ ***
-    
-    st.write("---")
-    st.info("Utiliza el menú de la izquierda para navegar a tu perfil y gestionar tu información.")
-    st.markdown("<h3 style='color: #4682B4;'>Juntos, hacemos la diferencia.</h3>", unsafe_allow_html=True)
+    # Esto ya no muestra la "Bienvenida" estática, sino que carga la página específica del rol.
+    # st.write("---")
+    # st.info("Utiliza el menú de la izquierda para navegar a tu perfil y gestionar tu información.")
+    # st.markdown("<h3 style='color: #4682B4;'>Juntos, hacemos la diferencia.</h3>", unsafe_allow_html=True)
+
+    # --- Redirección a la página específica del rol ---
+    if st.session_state['user_type'] == 'Donante':
+        donante_page.donante_perfil() # Carga la función principal de la página del donante
+    elif st.session_state['user_type'] == 'Beneficiario':
+        # Asegúrate de tener un archivo 'pages/beneficiario.py' con una función 'beneficiario_perfil()'
+        # beneficiario_page.beneficiario_perfil() 
+        st.info("Funcionalidad para Beneficiarios en desarrollo. ¡Bienvenido!")
+    elif st.session_state['user_type'] == 'Hospital': # <-- ¡NUEVO!
+        hospital_page.hospital_perfil() # Carga la función principal de la página del hospital
+    else:
+        st.error("Tipo de usuario no reconocido. Por favor, contacta al soporte.")
 
 
 else: # Si el usuario NO está logueado, muestra el formulario de inicio de sesión
@@ -121,7 +136,7 @@ else: # Si el usuario NO está logueado, muestra el formulario de inicio de sesi
             st.subheader("Inicia Sesión Aquí")
             email = st.text_input("📧 Email de Usuario", help="Debe ser un email existente en tu tabla de Donante/Beneficiario/Hospital en Supabase.") 
             password = st.text_input("🔒 Contraseña", type="password", help="La contraseña de prueba es '123'.")
-            user_type = st.selectbox("👤 Tipo de Usuario", ["Donante", "Beneficiario", "Hospital"])
+            user_type = st.selectbox("👤 Tipo de Usuario", ["Donante", "Beneficiario", "Hospital"]) # <-- "Hospital" añadido
             
             st.write("") 
             login_button = st.form_submit_button("Ingresar")
