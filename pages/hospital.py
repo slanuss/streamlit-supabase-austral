@@ -174,68 +174,6 @@ def hospital_perfil():
                 st.info("Por favor, asegúrate de que el hospital ya exista en la base de datos para poder actualizar su perfil.")
 
 
-def hospital_campanas_beneficiarios():
-    st.markdown("<h2 style='color: #4CAF50;'>Campañas de Beneficiarios (Públicas) 🌐</h2>", unsafe_allow_html=True)
-    st.write("Explora las campañas de donación de sangre publicadas por otros beneficiarios que necesitan ayuda, y gestiona las asociaciones con tu hospital.")
-
-    hospital_id_logueado = st.session_state.get("user_db_id")
-
-    if not hospital_id_logueado:
-        st.warning("⚠️ Para ver y gestionar campañas de beneficiarios, asegúrate de que tu perfil de hospital esté completo y tenga un ID válido.")
-        return
-
-    if supabase_client:
-        try:
-            # Obtener información de beneficiarios para mostrar nombres
-            response = supabase_client.table("beneficiario").select("id_beneficiario, nombre, id_hospital_asociado, mail").execute() # id_beneficiario en minúsculas
-            beneficiarios = {b["id_beneficiario"]: b for b in response.data} # id_beneficiario en minúsculas
-
-            # Obtener campañas de beneficiarios (solo "En Curso" por ahora)
-            # Asegúrate que 'estado_campana', 'fecha_fin', 'tipo_sangre_requerida', 'cantidad_necesaria' estén en minúsculas si así están en tu DB
-            response_campanas = supabase_client.table("campana_beneficiario").select("*").eq("estado_campana", "En Curso").order("fecha_fin", desc=False).execute()
-            campanas_beneficiarios = response_campanas.data
-
-            st.markdown("### Campañas Activas de Beneficiarios")
-            if campanas_beneficiarios:
-                for campana in campanas_beneficiarios:
-                    beneficiario_info = beneficiarios.get(campana.get("id_beneficiario")) # id_beneficiario en minúsculas
-                    beneficiario_nombre = beneficiario_info.get("nombre", "Beneficiario Anónimo") if beneficiario_info else "Beneficiario Anónimo"
-
-                    with st.expander(f"Campaña de: {beneficiario_nombre} (Tipo: {campana.get('tipo_sangre_requerida', 'N/A')})"):
-                        st.write(f"**ID Campaña:** {campana.get('id_campana_beneficiario', 'N/A')}") # id_campana_beneficiario en minúsculas
-                        st.write(f"**Descripción:** {campana.get('descripcion_campana', 'N/A')}") # descripcion_campana en minúsculas
-                        st.write(f"**Fecha Límite:** {campana.get('fecha_fin', 'N/A')}") # fecha_fin en minúsculas
-                        st.write(f"**Tipo de Sangre:** {campana.get('tipo_sangre_requerida', 'N/A')}") # tipo_sangre_requerida en minúsculas
-                        st.write(f"**Cantidad Necesaria:** {campana.get('cantidad_necesaria', 'N/A')} unidades") # cantidad_necesaria en minúsculas
-                        st.write(f"**Estado:** `{campana.get('estado_campana', 'N/A')}`") # estado_campana en minúsculas
-
-                        hospital_asociado_id = beneficiario_info.get("id_hospital_asociado") if beneficiario_info else None # id_hospital_asociado en minúsculas
-                        if hospital_asociado_id:
-                            if hospital_asociado_id == hospital_id_logueado:
-                                st.success(f"**Asociado con tu Hospital:** ✅ (ID: {hospital_asociado_id})")
-                            else:
-                                st.info(f"**Asociado con otro Hospital:** (ID: {hospital_asociado_id})")
-                        else:
-                            st.warning("**No asociado a ningún Hospital.**")
-
-                        if beneficiario_info and not hospital_asociado_id: # Solo mostrar botón si no está asociado
-                            if st.button(f"Asociar Beneficiario {beneficiario_nombre} a mi Hospital", key=f"associate_ben_{campana.get('id_campana_beneficiario')}"): # id_campana_beneficiario en minúsculas
-                                try:
-                                    supabase_client.table("beneficiario").update({"id_hospital_asociado": hospital_id_logueado}).eq("id_beneficiario", campana.get('id_beneficiario')).execute() # id_hospital_asociado, id_beneficiario en minúsculas
-                                    st.success(f"Beneficiario {beneficiario_nombre} asociado a tu hospital.")
-                                    time.sleep(1)
-                                    st.rerun()
-                                except Exception as e:
-                                    st.error(f"Error al asociar beneficiario: {e}")
-
-                    st.markdown("---") # Separador entre campañas
-            else:
-                st.info("ℹ️ No hay campañas de beneficiarios activas en este momento.")
-        except Exception as e:
-            st.error(f"❌ Error al obtener campañas de beneficiarios: {e}")
-    else:
-        st.error("Conexión a Supabase no disponible para obtener campañas de beneficiarios.")
-
 
 def hospital_campanas_solidarias():
     st.markdown("<h2 style='color: #4CAF50;'>Mis Campañas Solidarias (Recolección en Hospital) 📢</h2>", unsafe_allow_html=True)
@@ -317,13 +255,11 @@ def hospital_campanas_solidarias():
 if __name__ == "__main__":
     if st.session_state.get("logged_in") and st.session_state.get("user_type") == "Hospital":
         st.sidebar.title("Navegación Hospital 🧭")
-        menu = ["Perfil", "Campañas de Beneficiarios", "Campañas Solidarias"]
+        menu = ["Perfil", "Campañas Solidarias"]
         opcion = st.sidebar.selectbox("Selecciona una sección", menu)
 
         if opcion == "Perfil":
             hospital_perfil()
-        elif opcion == "Campañas de Beneficiarios":
-            hospital_campanas_beneficiarios()
         elif opcion == "Campañas Solidarias":
             hospital_campanas_solidarias()
     else:
