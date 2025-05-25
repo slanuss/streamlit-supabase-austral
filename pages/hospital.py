@@ -138,7 +138,7 @@ def hospital_perfil():
         valores_iniciales["nombre_hospital"] = perfil_existente.get("nombre_hospital", "")
         valores_iniciales["mail"] = perfil_existente.get("mail", email_usuario_logueado)
         valores_iniciales["telefono"] = perfil_existente.get("telefono", "")
-        valores_iniciales["direccion"] = perfil_existentes.get("direccion", "")
+        valores_iniciales["direccion"] = perfil_existente.get("direccion", "")
         valores_iniciales["sitio_web"] = perfil_existente.get("sitio_web", "")
         valores_iniciales["descripcion"] = perfil_existente.get("descripcion", "")
 
