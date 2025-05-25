@@ -249,10 +249,6 @@ def donante_requisitos():
     st.info("Esta es una lista general. Siempre consulta los requisitos específicos del centro de donación.")
 
 
-def donante_manual():
-    st.markdown("<h2 style='color: #B22222;'>Manual del Donante 📖</h2>", unsafe_allow_html=True)
-    st.write("Guía completa para donantes, desde la preparación hasta el cuidado posterior a la donación.")
-    st.info("Próximamente: Contenido detallado sobre el proceso de donación.")
 
 def donante_info_donaciones():
     st.markdown("<h2 style='color: #B22222;'>Información sobre Donaciones 💡</h2>", unsafe_allow_html=True)
@@ -338,7 +334,7 @@ def donante_info_donaciones():
 if __name__ == "__main__":
     if st.session_state.get('logged_in') and st.session_state.get('user_type') == 'Donante':
         st.sidebar.title("Navegación Donante 🧭")
-        menu = ["Perfil", "Campañas Disponibles", "Información sobre Donaciones", "Hospitales", "Requisitos", "Manual del Donante"]
+        menu = ["Perfil", "Campañas Disponibles", "Información sobre Donaciones", "Hospitales", "Requisitos"]
         opcion = st.sidebar.selectbox("Selecciona una sección", menu)
 
         if opcion == "Perfil":
@@ -351,8 +347,6 @@ if __name__ == "__main__":
             donante_hospitales()
         elif opcion == "Requisitos":
             donante_requisitos()
-        elif opcion == "Manual del Donante":
-            donante_manual()
     else:
         st.warning("⚠️ Debes iniciar sesión como **Donante** para acceder a esta página.")
         if st.button("Ir a Inicio de Sesión"):
