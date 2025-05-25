@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from supabase import create_client, Client
 from datetime import datetime, time as dt_time # Importar time específicamente para horarios
 
+
 # Carga las variables de entorno desde el archivo .env
 load_dotenv()
 
@@ -24,6 +25,7 @@ else:
         st.error(f"Error al inicializar cliente Supabase: {e}")
         supabase_client: Client = None
 
+
 # --- Función para obtener datos del hospital ---
 def obtener_datos_hospital(hospital_email):
     if supabase_client is None:
@@ -39,6 +41,7 @@ def obtener_datos_hospital(hospital_email):
         st.error(f"Error al obtener datos del hospital: {e}")
         return None
 
+
 # --- Función para actualizar datos del hospital ---
 def actualizar_datos_hospital(hospital_email, datos):
     if supabase_client is None:
@@ -48,8 +51,8 @@ def actualizar_datos_hospital(hospital_email, datos):
         response = supabase_client.table("hospital").update(datos).eq("mail", hospital_email).execute()
         if response.data:
             st.success("✅ ¡Perfil del Hospital actualizado con éxito!")
-            time.sleep(1)
-            st.rerun()
+            time.sleep(1) # Pequeña pausa para que el usuario vea el mensaje
+            st.rerun() # Recargar la página para ver los cambios
             return True
         else:
             st.error(f"❌ Error al actualizar: {response.status_code} - {response.text}")
@@ -58,12 +61,14 @@ def actualizar_datos_hospital(hospital_email, datos):
         st.error(f"❌ Error inesperado al actualizar datos: {e}")
         return False
 
+
 # --- Funciones para Campañas Solidarias del Hospital (recolección) ---
 def obtener_campanas_solidarias_hospital(hospital_id):
     if supabase_client:
         try:
-            # Ahora ordenamos por estado y luego por fecha de fin
-            response = supabase_client.table("campaña").select("*").eq("ID_Hospital", hospital_id).order("Estado_Campaña", desc=False).order("Fecha_Limite", desc=False).execute()
+            # Ordenar por estado para que las "En Curso" y "Próximas" aparezcan primero
+            # Luego, ordenar por Fecha_Inicio para las próximas o en curso
+            response = supabase_client.table("campaña").select("*").eq("ID_Hospital", hospital_id).order("Estado_Campaña", desc=False).order("Fecha_Inicio", desc=False).execute()
             if response.data:
                 return response.data
             else:
@@ -78,6 +83,7 @@ def crear_nueva_campana_solidaria(datos_campana):
         st.error("Conexión a Supabase no disponible. No se puede crear la campaña solidaria.")
         return False
     try:
+        # Aquí insertamos los datos en la tabla 'campaña'
         data, count = supabase_client.table("campaña").insert(datos_campana).execute()
         if data and len(data) > 0:
             st.success("🎉 ¡Nueva campaña solidaria publicada con éxito!")
@@ -111,16 +117,20 @@ def hospital_perfil():
     st.markdown("<h2 style='color: #4CAF50;'>Mi Perfil de Hospital 🏥</h2>", unsafe_allow_html=True)
     st.write("Gestiona la información de tu hospital y asegura que tus datos estén actualizados.")
 
-    email_usuario_logueado = st.session_state.get('user_email', 'hospital@ejemplo.com')
-    hospital_id_logueado = st.session_state.get('user_db_id')
+    email_usuario_logueado = st.session_state.get("user_email", "hospital@ejemplo.com")
+    hospital_id_logueado = st.session_state.get("user_db_id") # Este ID no es usado en esta función directamente, pero es bueno tenerlo
 
     perfil_existente = obtener_datos_hospital(email_usuario_logueado)
 
     valores_iniciales = {
-        "nombre_hospital": "", "mail": email_usuario_logueado, "telefono": "", "direccion": "",
-        "sitio_web": "", "descripcion": ""
+        "nombre_hospital": "",
+        "mail": email_usuario_logueado,
+        "telefono": "",
+        "direccion": "",
+        "sitio_web": "",
+        "descripcion": "",
     }
-    
+
     if perfil_existente:
         st.info(f"✨ Datos de perfil cargados para: **{perfil_existente.get('nombre_hospital', 'N/A')}**")
         valores_iniciales["nombre_hospital"] = perfil_existente.get("nombre_hospital", "")
@@ -140,7 +150,7 @@ def hospital_perfil():
         with col2:
             direccion = st.text_input("Dirección del Hospital", value=valores_iniciales["direccion"])
             sitio_web = st.text_input("Sitio Web (opcional)", value=valores_iniciales["sitio_web"])
-        
+
         descripcion = st.text_area("Breve Descripción del Hospital", value=valores_iniciales["descripcion"])
 
         st.write("---")
@@ -153,7 +163,7 @@ def hospital_perfil():
                 "telefono": telefono,
                 "direccion": direccion,
                 "sitio_web": sitio_web,
-                "descripcion": descripcion
+                "descripcion": descripcion,
             }
             if perfil_existente:
                 actualizar_datos_hospital(mail, datos_a_guardar)
@@ -166,7 +176,7 @@ def hospital_campanas_beneficiarios():
     st.markdown("<h2 style='color: #4CAF50;'>Campañas de Beneficiarios (Públicas) 🌐</h2>", unsafe_allow_html=True)
     st.write("Explora las campañas de donación de sangre publicadas por otros beneficiarios que necesitan ayuda, y gestiona las asociaciones con tu hospital.")
 
-    hospital_id_logueado = st.session_state.get('user_db_id')
+    hospital_id_logueado = st.session_state.get("user_db_id")
 
     if not hospital_id_logueado:
         st.warning("⚠️ Para ver y gestionar campañas de beneficiarios, asegúrate de que tu perfil de hospital esté completo y tenga un ID válido.")
@@ -174,18 +184,20 @@ def hospital_campanas_beneficiarios():
 
     if supabase_client:
         try:
+            # Obtener información de beneficiarios para mostrar nombres
             response = supabase_client.table("beneficiario").select("ID_Beneficiario, Nombre, ID_Hospital_Asociado, mail").execute()
-            beneficiarios = {b['ID_Beneficiario']: b for b in response.data}
-            
+            beneficiarios = {b["ID_Beneficiario"]: b for b in response.data}
+
+            # Obtener campañas de beneficiarios (solo "En Curso" por ahora)
             response_campanas = supabase_client.table("campana_beneficiario").select("*").eq("Estado_Campaña", "En Curso").order("Fecha_Fin", desc=False).execute()
             campanas_beneficiarios = response_campanas.data
-            
+
             st.markdown("### Campañas Activas de Beneficiarios")
             if campanas_beneficiarios:
                 for campana in campanas_beneficiarios:
-                    beneficiario_info = beneficiarios.get(campana.get('ID_Beneficiario'))
-                    beneficiario_nombre = beneficiario_info.get('Nombre', 'Beneficiario Anónimo') if beneficiario_info else 'Beneficiario Anónimo'
-                    
+                    beneficiario_info = beneficiarios.get(campana.get("ID_Beneficiario"))
+                    beneficiario_nombre = beneficiario_info.get("Nombre", "Beneficiario Anónimo") if beneficiario_info else "Beneficiario Anónimo"
+
                     with st.expander(f"Campaña de: {beneficiario_nombre} (Tipo: {campana.get('Tipo_Sangre_Requerida', 'N/A')})"):
                         st.write(f"**ID Campaña:** {campana.get('ID_Campaña_Beneficiario', 'N/A')}")
                         st.write(f"**Descripción:** {campana.get('Descripcion_Campaña', 'N/A')}")
@@ -193,8 +205,8 @@ def hospital_campanas_beneficiarios():
                         st.write(f"**Tipo de Sangre:** {campana.get('Tipo_Sangre_Requerida', 'N/A')}")
                         st.write(f"**Cantidad Necesaria:** {campana.get('Cantidad_Necesaria', 'N/A')} unidades")
                         st.write(f"**Estado:** `{campana.get('Estado_Campaña', 'N/A')}`")
-                        
-                        hospital_asociado_id = beneficiario_info.get('ID_Hospital_Asociado') if beneficiario_info else None
+
+                        hospital_asociado_id = beneficiario_info.get("ID_Hospital_Asociado") if beneficiario_info else None
                         if hospital_asociado_id:
                             if hospital_asociado_id == hospital_id_logueado:
                                 st.success(f"**Asociado con tu Hospital:** ✅ (ID: {hospital_asociado_id})")
@@ -203,7 +215,7 @@ def hospital_campanas_beneficiarios():
                         else:
                             st.warning("**No asociado a ningún Hospital.**")
 
-                        if beneficiario_info and not hospital_asociado_id:
+                        if beneficiario_info and not hospital_asociado_id: # Solo mostrar botón si no está asociado
                             if st.button(f"Asociar Beneficiario {beneficiario_nombre} a mi Hospital", key=f"associate_ben_{campana.get('ID_Campaña_Beneficiario')}"):
                                 try:
                                     supabase_client.table("beneficiario").update({"ID_Hospital_Asociado": hospital_id_logueado}).eq("ID_Beneficiario", campana.get('ID_Beneficiario')).execute()
@@ -213,7 +225,7 @@ def hospital_campanas_beneficiarios():
                                 except Exception as e:
                                     st.error(f"Error al asociar beneficiario: {e}")
 
-                    st.markdown("---")
+                    st.markdown("---") # Separador entre campañas
             else:
                 st.info("ℹ️ No hay campañas de beneficiarios activas en este momento.")
         except Exception as e:
@@ -226,7 +238,7 @@ def hospital_campanas_solidarias():
     st.markdown("<h2 style='color: #4CAF50;'>Mis Campañas Solidarias (Recolección en Hospital) 📢</h2>", unsafe_allow_html=True)
     st.write("Aquí puedes gestionar las campañas de donación de sangre que tu hospital ha organizado para la recolección en sus propias instalaciones.")
 
-    hospital_id_logueado = st.session_state.get('user_db_id')
+    hospital_id_logueado = st.session_state.get("user_db_id")
 
     if not hospital_id_logueado:
         st.warning("⚠️ Para gestionar campañas solidarias, asegúrate de que tu perfil de hospital esté completo y tenga un ID válido.")
@@ -236,112 +248,73 @@ def hospital_campanas_solidarias():
     st.markdown("### ➕ Crear Nueva Campaña Solidaria")
     with st.form("nueva_campana_solidaria_form"):
         nombre_campana = st.text_input("Nombre de la Campaña", placeholder="Jornada de Donación - Verano 2025")
-        descripcion_campana = st.text_area("Descripción de la Campaña", placeholder="Campaña anual para reponer nuestras reservas de sangre. ¡Tu donación es vida!")
-        
-        # Nuevos campos: Ubicación, Fecha y Horario
         ubicacion = st.text_input("Ubicación de la Campaña", placeholder="Ej: Hall principal, Salón de usos múltiples")
         fecha_campana = st.date_input("Fecha de la Campaña", value=datetime.today().date())
-        horario_inicio = st.time_input("Hora de Inicio", value=dt_time(9, 0)) # 9:00 AM por defecto
-        horario_fin = st.time_input("Hora de Fin", value=dt_time(17, 0)) # 5:00 PM por defecto
-        
-        sangre_options = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Cualquiera"]
-        tipo_sangre_enfasis = st.selectbox("Énfasis en Tipo de Sangre (opcional)", sangre_options)
-        
-        # El estado inicial puede ser "Próxima" si la fecha es futura, o "En Curso" si es hoy
-        default_estado = "Próxima" if fecha_campana > datetime.today().date() else "En Curso"
-        estado_campana = st.selectbox("Estado Inicial de la Campaña", ["Próxima", "En Curso", "Finalizada", "Cancelada"], index=["Próxima", "En Curso", "Finalizada", "Cancelada"].index(default_estado))
+        horario_inicio = st.time_input("Hora de Inicio", value=dt_time(9, 0))
+        horario_fin = st.time_input("Hora de Fin", value=dt_time(17, 0))
+        estado_campana = st.selectbox("Estado de la Campaña", ["Próxima", "En Curso", "Finalizada"])
 
-        guardar_campana = st.form_submit_button("🚀 Publicar Campaña Solidaria")
+        guardar_campana = st.form_submit_button("🚀 Publicar Campaña")
 
         if guardar_campana:
-            if not nombre_campana or not descripcion_campana or not ubicacion:
-                st.error("Por favor, completa todos los campos obligatorios (Nombre, Descripción, Ubicación).")
+            # Validaciones básicas
+            if not nombre_campana or not ubicacion:
+                st.error("Por favor, completa el nombre y la ubicación de la campaña.")
+            elif horario_inicio >= horario_fin:
+                st.error("La hora de inicio debe ser anterior a la hora de fin.")
             else:
                 datos_campana = {
                     "ID_Hospital": hospital_id_logueado,
                     "Nombre_Campaña": nombre_campana,
-                    "Descripcion_Campaña": descripcion_campana,
-                    "Ubicacion": ubicacion, # <-- NUEVO
-                    "Fecha_Inicio": fecha_campana.isoformat(), # Usamos esta para la fecha del evento
-                    "Fecha_Limite": fecha_campana.isoformat(), # Para consistencia, puede ser la misma fecha_campana
-                    "Horario_Inicio": horario_inicio.isoformat(), # <-- NUEVO
-                    "Horario_Fin": horario_fin.isoformat(),     # <-- NUEVO
-                    "Tipo_Sangre_Requerida": tipo_sangre_enfasis,
+                    "Ubicacion": ubicacion,
+                    "Fecha_Inicio": fecha_campana.isoformat(), # Formato ISO para la base de datos
+                    "Horario_Inicio": horario_inicio.isoformat(), # Formato ISO
+                    "Horario_Fin": horario_fin.isoformat(), # Formato ISO
                     "Estado_Campaña": estado_campana,
-                    "Fecha_Publicacion": datetime.now().isoformat()
+                    # No se agrega Fecha_Limite aquí si no está en el formulario de creación.
+                    # Si tu tabla `campaña` tiene `Fecha_Limite` como campo obligatorio
+                    # y no es lo mismo que `Fecha_Inicio`, deberás añadirlo al formulario.
                 }
                 if crear_nueva_campana_solidaria(datos_campana):
+                    # No es necesario un st.success() aquí porque ya está en la función
                     st.balloons()
-                    st.rerun() 
+                    st.rerun()
 
     st.markdown("---")
-    st.markdown("### Mis Campañas Solidarias")
+    st.markdown("### Campañas Solidarias Existentes")
 
     # --- Sección para VER y Gestionar Campañas Solidarias Existentes ---
     campanas = obtener_campanas_solidarias_hospital(hospital_id_logueado)
 
     if campanas:
-        # Separar campañas por estado para una mejor visualización
-        campanas_en_curso = [c for c in campanas if c.get('Estado_Campaña') == 'En Curso']
-        campanas_proximas = [c for c in campanas if c.get('Estado_Campaña') == 'Próxima']
-        campanas_finalizadas = [c for c in campanas if c.get('Estado_Campaña') == 'Finalizada' or c.get('Estado_Campaña') == 'Cancelada'] # Incluir Cancelada aquí
+        for campana in campanas:
+            estado = campana.get("Estado_Campaña", "N/A")
+            # Usa Fecha_Inicio si Fecha_Limite no es relevante para tu visualización aquí
+            fecha_display = campana.get("Fecha_Inicio", "N/A") 
 
-        if campanas_en_curso:
-            st.markdown("#### Campañas Actualmente en Curso")
-            for campana in campanas_en_curso:
-                with st.expander(f"Campaña: {campana.get('Nombre_Campaña', 'Sin Nombre')} (En Curso)"):
-                    st.write(f"**ID Campaña:** {campana.get('ID_Campaña', 'N/A')}")
-                    st.write(f"**Descripción:** {campana.get('Descripcion_Campaña', 'N/A')}")
-                    st.write(f"**Ubicación:** {campana.get('Ubicacion', 'N/A')}") # <-- NUEVO
-                    st.write(f"**Fecha:** {campana.get('Fecha_Inicio', 'N/A')}") # Usamos Fecha_Inicio como la fecha del evento
-                    st.write(f"**Horario:** {campana.get('Horario_Inicio', 'N/A')} - {campana.get('Horario_Fin', 'N/A')}") # <-- NUEVO
-                    st.write(f"**Énfasis en Tipo de Sangre:** {campana.get('Tipo_Sangre_Requerida', 'N/A')}")
-                    st.markdown("---")
-                    # Botón para finalizar la campaña
-                    if st.button(f"🔴 Finalizar Campaña '{campana.get('Nombre_Campaña')}'", key=f"end_solidaria_{campana.get('ID_Campaña')}"):
-                        if finalizar_campana_solidaria(campana.get('ID_Campaña')):
-                            st.rerun() # Recargar para que se actualice la lista
-                st.markdown("---")
-        else:
-            st.info("ℹ️ No hay campañas solidarias actualmente en curso.")
-
-        if campanas_proximas:
-            st.markdown("#### Campañas Próximas")
-            for campana in campanas_proximas:
-                with st.expander(f"Campaña: {campana.get('Nombre_Campaña', 'Sin Nombre')} (Próxima)"):
-                    st.write(f"**ID Campaña:** {campana.get('ID_Campaña', 'N/A')}")
-                    st.write(f"**Descripción:** {campana.get('Descripcion_Campaña', 'N/A')}")
-                    st.write(f"**Ubicación:** {campana.get('Ubicacion', 'N/A')}")
-                    st.write(f"**Fecha:** {campana.get('Fecha_Inicio', 'N/A')}")
-                    st.write(f"**Horario:** {campana.get('Horario_Inicio', 'N/A')} - {campana.get('Horario_Fin', 'N/A')}")
-                    st.write(f"**Énfasis en Tipo de Sangre:** {campana.get('Tipo_Sangre_Requerida', 'N/A')}")
-                    # Aquí podrías añadir un botón para "Cancelar" la campaña si lo deseas
-                st.markdown("---")
-        
-        if campanas_finalizadas:
-            st.markdown("#### Campañas Finalizadas / Canceladas")
-            for campana in campanas_finalizadas:
-                estado_display = "Finalizada" if campana.get('Estado_Campaña') == 'Finalizada' else "Cancelada"
-                with st.expander(f"Campaña: {campana.get('Nombre_Campaña', 'Sin Nombre')} ({estado_display})"):
-                    st.write(f"**ID Campaña:** {campana.get('ID_Campaña', 'N/A')}")
-                    st.write(f"**Descripción:** {campana.get('Descripcion_Campaña', 'N/A')}")
-                    st.write(f"**Ubicación:** {campana.get('Ubicacion', 'N/A')}")
-                    st.write(f"**Fecha:** {campana.get('Fecha_Inicio', 'N/A')}")
-                    st.write(f"**Horario:** {campana.get('Horario_Inicio', 'N/A')} - {campana.get('Horario_Fin', 'N/A')}")
-                    st.write(f"**Énfasis en Tipo de Sangre:** {campana.get('Tipo_Sangre_Requerida', 'N/A')}")
-                st.markdown("---")
-
-        if not campanas_en_curso and not campanas_proximas and not campanas_finalizadas:
-            st.info("ℹ️ No has publicado ninguna campaña solidaria de recolección aún. ¡Usa el formulario de arriba para crear una!")
+            with st.expander(f"Campaña: {campana.get('Nombre_Campaña', 'Sin Nombre')} (Estado: {estado})"):
+                st.write(f"**ID Campaña:** {campana.get('ID_Campaña', 'N/A')}")
+                st.write(f"**Ubicación:** {campana.get('Ubicacion', 'N/A')}")
+                st.write(f"**Fecha:** {fecha_display}")
+                st.write(f"**Horario:** {campana.get('Horario_Inicio', 'N/A')} - {campana.get('Horario_Fin', 'N/A')}")
+                
+                # Botón para finalizar campaña, solo si está "En Curso" o "Próxima"
+                if estado == "En Curso" or estado == "Próxima":
+                    if st.button(f"Finalizar Campaña '{campana.get('Nombre_Campaña')}'", key=f"finalizar_{campana.get('ID_Campaña')}"):
+                        if finalizar_campana_solidaria(campana.get("ID_Campaña")):
+                            st.rerun() # Recargar la página después de finalizar
+                elif estado == "Finalizada":
+                    st.info("Esta campaña ha sido finalizada.")
+            st.markdown("---")
     else:
-        st.info("ℹ️ No hay campañas solidarias disponibles.")
+        st.info("No hay campañas solidarias disponibles para tu hospital.")
 
 
 # --- Lógica principal de la página del Hospital ---
 if __name__ == "__main__":
-    if st.session_state.get('logged_in') and st.session_state.get('user_type') == 'Hospital':
+    if st.session_state.get("logged_in") and st.session_state.get("user_type") == "Hospital":
         st.sidebar.title("Navegación Hospital 🧭")
-        menu = ["Perfil", "Campañas de Beneficiarios", "Campañas Solidarias"] 
+        menu = ["Perfil", "Campañas de Beneficiarios", "Campañas Solidarias"]
         opcion = st.sidebar.selectbox("Selecciona una sección", menu)
 
         if opcion == "Perfil":
