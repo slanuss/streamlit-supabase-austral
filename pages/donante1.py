@@ -169,15 +169,6 @@ def donante_perfil():
         
         cumple_requisitos_cb = st.checkbox("¿Cumples con los requisitos generales para donar sangre?", value=valores_iniciales["cumple_requisitos"])
         
-        # <-- ELIMINADO: Campo de fecha de última donación
-        # ultima_donacion_val = None
-        # if valores_iniciales["ultimadonacion"]:
-        #     try:
-        #         ultima_donacion_val = datetime.strptime(str(valores_iniciales["ultimadonacion"]).split("T")[0], "%Y-%m-%d").date()
-        #     except ValueError:
-        #         ultima_donacion_val = None
-        # ultima_donacion_date_input = st.date_input("Fecha de Última Donación", value=ultima_donacion_val if ultima_donacion_val else datetime.today().date())
-
         st.write("---")
         guardar = st.form_submit_button("💾 Guardar Perfil" if not perfil_existente else "🔄 Actualizar Perfil")
 
@@ -265,8 +256,83 @@ def donante_manual():
 
 def donante_info_donaciones():
     st.markdown("<h2 style='color: #B22222;'>Información sobre Donaciones 💡</h2>", unsafe_allow_html=True)
-    st.write("Artículos y recursos útiles sobre la importancia de la donación de sangre y cómo impacta vidas.")
-    st.info("Próximamente: Datos, mitos y verdades sobre la donación.")
+    st.write("Explora estos recursos para entender la importancia de tu donación y cómo impacta vidas.")
+
+    st.markdown("---") # Separador visual
+
+    # Sección 1: ¿Por qué es importante donar sangre?
+    st.markdown("### ¿Por qué tu Donación Salva Vidas? ❤️")
+    st.write("""
+    Donar sangre es un acto altruista que tiene un impacto directo y vital en la vida de muchas personas. Cada donación puede salvar hasta tres vidas. La sangre y sus componentes son esenciales para:
+    * **Pacientes con cáncer:** Muchos tratamientos de quimioterapia afectan la producción de células sanguíneas.
+    * **Cirugías y trasplantes:** Se requieren grandes cantidades de sangre durante y después de procedimientos complejos.
+    * **Accidentes y emergencias:** Las víctimas de accidentes a menudo necesitan transfusiones urgentes.
+    * **Enfermedades crónicas:** Pacientes con anemia severa, talasemia, o hemofilia necesitan transfusiones regulares.
+    * **Madres durante el parto:** Las hemorragias postparto son una causa importante de mortalidad materna.
+    """)
+    st.info("¡Tu contribución es invaluable y marca una diferencia real!")
+
+    st.markdown("---") # Separador visual
+
+    # Sección 2: El proceso de donación (breve descripción)
+    st.markdown("### El Proceso de Donación: ¿Qué Esperar? 🩸")
+    st.write("""
+    Donar sangre es un proceso seguro y rápido que generalmente toma entre 45 minutos y 1 hora, incluyendo el registro y el descanso post-donación.
+    1.  **Registro:** Se te pedirá una identificación y se revisarán tus datos.
+    2.  **Cuestionario de Salud:** Se te hará un cuestionario confidencial para asegurar que eres apto para donar.
+    3.  **Chequeo Médico:** Un profesional de la salud tomará tu presión arterial, pulso y temperatura, y medirá tus niveles de hemoglobina.
+    4.  **Donación:** La extracción de sangre en sí dura solo de 8 a 10 minutos.
+    5.  **Descanso y Refrigerio:** Se te ofrecerá un refrigerio y se te pedirá que descanses unos minutos antes de irte.
+    """)
+    st.success("¡Prepárate para sentirte bien después de hacer el bien!")
+
+    st.markdown("---") # Separador visual
+
+    # Sección 3: Mitos y verdades
+    st.markdown("### Mitos y Verdades sobre la Donación 🤔")
+    st.write("Despejamos algunas dudas comunes sobre la donación de sangre:")
+    st.markdown("""
+    * **Mito:** Donar sangre debilita.
+        * **Verdad:** Tu cuerpo repone el volumen de sangre en pocas horas y los glóbulos rojos en pocas semanas. No te sentirás débil si sigues las recomendaciones.
+    * **Mito:** Puedo contraer enfermedades al donar.
+        * **Verdad:** Todo el material utilizado es estéril, de un solo uso y desechable. No hay riesgo de contraer enfermedades.
+    * **Mito:** Hay que estar en ayunas para donar.
+        * **Verdad:** ¡No! De hecho, se recomienda haber comido algo ligero y beber muchos líquidos antes de donar.
+    """)
+
+    st.markdown("---") # Separador visual
+
+    # Sección 4: Consejos para antes y después de donar
+    st.markdown("### Consejos para Donantes ✨")
+    st.markdown("#### Antes de Donar:")
+    st.markdown("""
+    * **Hidratación:** Bebe abundante agua y otros líquidos (no alcohólicos) el día antes y el día de la donación.
+    * **Alimentación:** Come una comida ligera y nutritiva antes de ir.
+    * **Descanso:** Asegúrate de haber dormido bien la noche anterior.
+    * **Documentación:** Lleva tu identificación.
+    """)
+    st.markdown("#### Después de Donar:")
+    st.markdown("""
+    * **Reposo:** Descansa unos minutos en el centro de donación.
+    * **Hidratación:** Continúa bebiendo muchos líquidos en las siguientes 24 horas.
+    * **Evita Esfuerzos:** No realices actividades físicas intensas ni levantes objetos pesados durante al menos 24 horas.
+    * **Alcohol:** Evita el alcohol y el tabaco por unas horas.
+    """)
+
+    st.markdown("---") # Separador visual
+
+    # Sección 5: Preguntas Frecuentes (puedes agregar más aquí)
+    st.markdown("### Preguntas Frecuentes (FAQ) ❓")
+    st.markdown("""
+    * **¿Con qué frecuencia puedo donar sangre?**
+        * Generalmente, cada 2 o 3 meses, dependiendo de las regulaciones locales.
+    * **¿Mis datos son confidenciales?**
+        * Sí, toda tu información es tratada con la máxima confidencialidad.
+    * **¿Se me avisará si mi sangre es utilizada?**
+        * Algunos centros ofrecen esta notificación; consulta con el personal.
+    """)
+
+    st.markdown("<p style='font-size: small; text-align: center; color: gray;'>¡Gracias por tu heroico acto de donación!</p>", unsafe_allow_html=True)
 
 # --- Lógica principal de la página del Donante ---
 if __name__ == "__main__":
@@ -293,4 +359,3 @@ if __name__ == "__main__":
             st.session_state['logged_in'] = False
             st.session_state['user_type'] = None
             st.rerun()
-            
