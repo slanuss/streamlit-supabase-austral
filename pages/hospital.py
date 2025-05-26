@@ -186,8 +186,8 @@ def hospital_campanas_solidarias():
         nombre_campana = st.text_input("Nombre de la Campaña", placeholder="Jornada de Donación - Verano 2025")
         ubicacion = st.text_input("Ubicación de la Campaña", placeholder="Ej: Hall principal, Salón de usos múltiples")
         fecha_campana = st.date_input("Fecha de la Campaña", value=datetime.today().date())
-        # REMOVED: horario_inicio = st.time_input("Hora de Inicio", value=dt_time(9, 0))
-        estado_campana_seleccionado = st.selectbox("Estado de la Campaña", ["Próxima", "En Curso", "Finalizada"])
+        # CAMBIO CLAVE AQUÍ: "En Curso" es ahora el valor predeterminado
+        estado_campana_seleccionado = st.selectbox("Estado de la Campaña", ["En Curso", "Próxima", "Finalizada"]) 
 
         guardar_campana = st.form_submit_button("🚀 Publicar Campaña")
 
@@ -200,7 +200,6 @@ def hospital_campanas_solidarias():
                     "nombre_campana": nombre_campana,
                     "ubicacion": ubicacion,
                     "fecha_inicio": fecha_campana.isoformat(),
-                    # REMOVED: "horario_inicio": horario_inicio.isoformat(),
                     "estado_campana": estado_campana_seleccionado,
                 }
                 if crear_nueva_campana_solidaria(datos_campana):
@@ -217,11 +216,13 @@ def hospital_campanas_solidarias():
             estado = campana.get("estado_campana", "N/A")
             fecha_display = campana.get("fecha_inicio", "N/A")
 
-            with st.expander(f"Campaña: {campana.get('nombre_campana', 'Sin Nombre')} (Estado: {estado})"):
+            # Muestra el estado en rojo si es "Próxima", o con color normal si es "En Curso" o "Finalizada"
+            estado_color = "red" if estado == "Próxima" else "inherit"
+            
+            with st.expander(f"Campaña: {campana.get('nombre_campana', 'Sin Nombre')} (Estado: <span style='color:{estado_color};'>**{estado}**</span>)", unsafe_allow_html=True):
                 st.write(f"**ID Campaña:** {campana.get('id_campana', 'N/A')}")
                 st.write(f"**Ubicación:** {campana.get('ubicacion', 'N/A')}")
                 st.write(f"**Fecha:** {fecha_display}")
-                # REMOVED: st.write(f"**Horario:** {campana.get('horario_inicio', 'N/A')}") 
                 
                 if estado == "En Curso" or estado == "Próxima":
                     if st.button(f"Finalizar Campaña '{campana.get('nombre_campana')}'", key=f"finalizar_{campana.get('id_campana')}"):
