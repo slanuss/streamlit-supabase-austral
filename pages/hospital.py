@@ -192,7 +192,8 @@ def hospital_campanas_solidarias():
         ubicacion = st.text_input("Ubicación de la Campaña", placeholder="Ej: Hall principal, Salón de usos múltiples")
         fecha_campana = st.date_input("Fecha de la Campaña", value=datetime.today().date())
         horario_inicio = st.time_input("Hora de Inicio", value=dt_time(9, 0))
-        horario_fin = st.time_input("Hora de Fin", value=dt_time(17, 0))
+        # REMOVIDO: horario_fin = st.time_input("Hora de Fin", value=dt_time(17, 0))
+        
         # --- CORRECCIÓN AQUÍ: 'estado_campana' del selectbox se usará con la clave correcta ---
         estado_campana_seleccionado = st.selectbox("Estado de la Campaña", ["Próxima", "En Curso", "Finalizada"])
 
@@ -202,8 +203,8 @@ def hospital_campanas_solidarias():
             # Validaciones básicas
             if not nombre_campana or not ubicacion:
                 st.error("Por favor, completa el nombre y la ubicación de la campaña.")
-            elif horario_inicio >= horario_fin:
-                st.error("La hora de inicio debe ser anterior a la hora de fin.")
+            # REMOVIDA: elif horario_inicio >= horario_fin:
+            # REMOVIDA: st.error("La hora de inicio debe ser anterior a la hora de fin.")
             else:
                 datos_campana = {
                     "id_hospital": hospital_id_logueado, # <-- CORRECCIÓN
@@ -211,7 +212,7 @@ def hospital_campanas_solidarias():
                     "ubicacion": ubicacion,              # <-- CORRECCIÓN
                     "fecha_inicio": fecha_campana.isoformat(), # <-- CORRECCIÓN
                     "horario_inicio": horario_inicio.isoformat(), # <-- CORRECCIÓN
-                    "horario_fin": horario_fin.isoformat(),     # <-- CORRECCIÓN
+                    # REMOVIDO: "horario_fin": horario_fin.isoformat(),     # <-- REMOVIDO
                     "estado_campana": estado_campana_seleccionado, # <-- CORRECCIÓN: Usar la variable seleccionada y nombre de columna en minúsculas
                     # Si tu tabla `campaña` tiene `fecha_fin` (en minúsculas) como campo obligatorio
                     # y no es lo mismo que `fecha_inicio`, deberás añadirlo al formulario y aquí.
@@ -237,7 +238,8 @@ def hospital_campanas_solidarias():
                 st.write(f"**ID Campaña:** {campana.get('id_campana', 'N/A')}") # <-- CORRECCIÓN
                 st.write(f"**Ubicación:** {campana.get('ubicacion', 'N/A')}") # <-- CORRECCIÓN
                 st.write(f"**Fecha:** {fecha_display}")
-                st.write(f"**Horario:** {campana.get('horario_inicio', 'N/A')} - {campana.get('horario_fin', 'N/A')}") # <-- CORRECCIÓN
+                # Ajustado para mostrar solo horario_inicio
+                st.write(f"**Horario:** {campana.get('horario_inicio', 'N/A')}") 
                 
                 # Botón para finalizar campaña, solo si está "En Curso" o "Próxima"
                 if estado == "En Curso" or estado == "Próxima":
