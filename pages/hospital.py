@@ -15,7 +15,7 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     st.error("Advertencia: Las variables de entorno SUPABASE_URL y SUPABASE_KEY no están configuradas en el .env.")
-    st.info("Por favor, confíguralas para que la conexión a la base de datos funcione.")
+    st.info("Por favor, confiáguralas para que la conexión a la base de datos funcione.")
     supabase_client: Client = None
 else:
     try:
@@ -24,25 +24,18 @@ else:
         st.error(f"Error al inicializar cliente Supabase: {e}")
         supabase_client: Client = None
 
-
-# --- Función para obtener datos del hospital ---
+# --- Funciones para datos del hospital ---
 def obtener_datos_hospital(hospital_email):
     if supabase_client is None:
         st.error("Conexión a Supabase no disponible. No se pueden obtener datos del hospital.")
         return None
     try:
-        # Asegúrate de que 'id_hospital' esté en minúsculas aquí si así está en tu DB
         response = supabase_client.table("hospital").select("*").eq("mail", hospital_email).execute()
-        if response.data:
-            return response.data[0]
-        else:
-            return None
+        return response.data[0] if response.data else None
     except Exception as e:
         st.error(f"Error al obtener datos del hospital: {e}")
         return None
 
-
-# --- Función para actualizar datos del hospital ---
 def actualizar_datos_hospital(hospital_email, datos):
     if supabase_client is None:
         st.error("Conexión a Supabase no disponible. No se pueden actualizar datos del hospital.")
@@ -51,29 +44,22 @@ def actualizar_datos_hospital(hospital_email, datos):
         response = supabase_client.table("hospital").update(datos).eq("mail", hospital_email).execute()
         if response.data:
             st.success("✅ ¡Perfil del Hospital actualizado con éxito!")
-            time.sleep(1) # Pequeña pausa para que el usuario vea el mensaje
-            st.rerun() # Recargar la página para ver los cambios
+            time.sleep(1)
+            st.rerun()
             return True
         else:
-            st.error(f"❌ Error al actualizar: {response.status_code} - {response.text}")
+            st.error("❌ No se pudo actualizar el perfil del hospital.")
             return False
     except Exception as e:
         st.error(f"❌ Error inesperado al actualizar datos: {e}")
         return False
 
-
-# --- Funciones para Campañas Solidarias del Hospital (recolección) ---
+# --- Funciones para campañas solidarias ---
 def obtener_campanas_solidarias_hospital(hospital_id):
     if supabase_client:
         try:
-            # --- CORRECCIÓN AQUÍ: 'id_hospital' en minúsculas ---
-            # Ordenar por estado para que las "En Curso" y "Próximas" aparezcan primero
-            # Luego, ordenar por Fecha_Inicio para las próximas o en curso
-            response = supabase_client.table("campaña").select("*").eq("id_hospital", hospital_id).order("fecha_inicio", desc=False).execute() # 'estado_campana' también en minúsculas si existe
-            if response.data:
-                return response.data
-            else:
-                return []
+            response = supabase_client.table("campaña").select("*").eq("id_hospital", hospital_id).order("fecha_inicio").execute()
+            return response.data if response.data else []
         except Exception as e:
             st.error(f"❌ Error al obtener campañas solidarias: {e}")
             return []
@@ -84,9 +70,8 @@ def crear_nueva_campana_solidaria(datos_campana):
         st.error("Conexión a Supabase no disponible. No se puede crear la campaña solidaria.")
         return False
     try:
-        # Aquí insertamos los datos en la tabla 'campaña'
-        data, count = supabase_client.table("campaña").insert(datos_campana).execute()
-        if data and len(data) > 0:
+        data, _ = supabase_client.table("campaña").insert(datos_campana).execute()
+        if data:
             st.success("🎉 ¡Nueva campaña solidaria publicada con éxito!")
             return True
         else:
@@ -101,172 +86,116 @@ def finalizar_campana_solidaria(campana_id):
         st.error("Conexión a Supabase no disponible. No se puede finalizar la campaña.")
         return False
     try:
-        # --- CORRECCIÓN AQUÍ: 'estado_campana' y 'id_campana' en minúsculas ---
         response = supabase_client.table("campaña").update({"estado_campana": "Finalizada"}).eq("id_campana", campana_id).execute()
         if response.data:
             st.success(f"✅ Campaña {campana_id} finalizada con éxito.")
             return True
         else:
-            st.error(f"❌ Error al finalizar campaña: {response.status_code} - {response.text}")
+            st.error("❌ No se pudo finalizar la campaña.")
             return False
     except Exception as e:
         st.error(f"❌ Error inesperado al finalizar campaña: {e}")
         return False
 
-
-# --- Definición de las funciones de sección del Hospital ---
+# --- Página de perfil del hospital ---
 def hospital_perfil():
     st.markdown("<h2 style='color: #4CAF50;'>Mi Perfil de Hospital 🏥</h2>", unsafe_allow_html=True)
-    st.write("Gestiona la información de tu hospital y asegura que tus datos estén actualizados.")
+    email = st.session_state.get("user_email", "hospital@ejemplo.com")
+    perfil = obtener_datos_hospital(email)
 
-    email_usuario_logueado = st.session_state.get("user_email", "hospital@ejemplo.com")
-    hospital_id_logueado = st.session_state.get("user_db_id")
-
-    perfil_existente = obtener_datos_hospital(email_usuario_logueado)
-
-    valores_iniciales = {
-        "nombre_hospital": "",
-        "mail": email_usuario_logueado,
-        "telefono": "",
-        "direccion": "",
-        "sitio_web": "",
-        "descripcion": "",
+    valores = {
+        "nombre_hospital": perfil.get("nombre_hospital", "") if perfil else "",
+        "mail": email,
+        "telefono": perfil.get("telefono", "") if perfil else "",
+        "direccion": perfil.get("direccion", "") if perfil else "",
+        "sitio_web": perfil.get("sitio_web", "") if perfil else "",
+        "descripcion": perfil.get("descripcion", "") if perfil else ""
     }
 
-    if perfil_existente:
-        st.info(f"✨ Datos de perfil cargados para: **{perfil_existente.get('nombre_hospital', 'N/A')}**")
-        valores_iniciales["nombre_hospital"] = perfil_existente.get("nombre_hospital", "")
-        valores_iniciales["mail"] = perfil_existente.get("mail", email_usuario_logueado)
-        valores_iniciales["telefono"] = perfil_existente.get("telefono", "")
-        valores_iniciales["direccion"] = perfil_existente.get("direccion", "")
-        valores_iniciales["sitio_web"] = perfil_existente.get("sitio_web", "")
-        valores_iniciales["descripcion"] = perfil_existente.get("descripcion", "")
-
-    with st.form("hospital_perfil_form"):
-        st.markdown("#### Información del Hospital")
+    with st.form("perfil_hospital_form"):
         col1, col2 = st.columns(2)
         with col1:
-            nombre_hospital = st.text_input("Nombre del Hospital", value=valores_iniciales["nombre_hospital"])
-            mail = st.text_input("Mail de Contacto", value=valores_iniciales["mail"], disabled=True)
-            telefono = st.text_input("Teléfono del Hospital", value=valores_iniciales["telefono"])
+            nombre = st.text_input("Nombre del Hospital", value=valores["nombre_hospital"])
+            mail = st.text_input("Mail", value=valores["mail"], disabled=True)
+            telefono = st.text_input("Teléfono", value=valores["telefono"])
         with col2:
-            direccion = st.text_input("Dirección del Hospital", value=valores_iniciales["direccion"])
-            sitio_web = st.text_input("Sitio Web (opcional)", value=valores_iniciales["sitio_web"])
+            direccion = st.text_input("Dirección", value=valores["direccion"])
+            sitio = st.text_input("Sitio Web", value=valores["sitio_web"])
 
-        descripcion = st.text_area("Breve Descripción del Hospital", value=valores_iniciales["descripcion"])
+        descripcion = st.text_area("Descripción", value=valores["descripcion"])
+        submit = st.form_submit_button("Guardar")
 
-        st.write("---")
-        guardar = st.form_submit_button("💾 Guardar Perfil" if not perfil_existente else "🔄 Actualizar Perfil")
-
-        if guardar:
-            datos_a_guardar = {
-                "nombre_hospital": nombre_hospital,
+        if submit:
+            datos = {
+                "nombre_hospital": nombre,
                 "mail": mail,
                 "telefono": telefono,
                 "direccion": direccion,
-                "sitio_web": sitio_web,
+                "sitio_web": sitio,
                 "descripcion": descripcion,
             }
-            if perfil_existente:
-                actualizar_datos_hospital(mail, datos_a_guardar)
+            if perfil:
+                actualizar_datos_hospital(mail, datos)
             else:
-                st.warning("⚠️ La funcionalidad para crear un nuevo perfil de hospital aún no está implementada aquí.")
-                st.info("Por favor, asegúrate de que el hospital ya exista en la base de datos para poder actualizar su perfil.")
+                st.warning("No se permite crear nuevos perfiles desde esta interfaz.")
 
-
-
+# --- Página de campañas solidarias ---
 def hospital_campanas_solidarias():
-    st.markdown("<h2 style='color: #4CAF50;'>Mis Campañas Solidarias (Recolección en Hospital) 📢</h2>", unsafe_allow_html=True)
-    st.write("Aquí puedes gestionar las campañas de donación de sangre que tu hospital ha organizado para la recolección en sus propias instalaciones.")
+    st.markdown("<h2 style='color: #4CAF50;'>Mis Campañas Solidarias 📢</h2>", unsafe_allow_html=True)
+    hospital_id = st.session_state.get("user_db_id")
 
-    hospital_id_logueado = st.session_state.get("user_db_id")
-
-    if not hospital_id_logueado:
-        st.warning("⚠️ Para gestionar campañas solidarias, asegúrate de que tu perfil de hospital esté completo y tenga un ID válido.")
+    if not hospital_id:
+        st.warning("Completa tu perfil antes de crear campañas.")
         return
 
-    # --- Sección para CREAR Nueva Campaña Solidaria ---
-    st.markdown("### ➕ Crear Nueva Campaña Solidaria")
-    with st.form("nueva_campana_solidaria_form"):
-        nombre_campana = st.text_input("Nombre de la Campaña", placeholder="Jornada de Donación - Verano 2025")
-        ubicacion = st.text_input("Ubicación de la Campaña", placeholder="Ej: Hall principal, Salón de usos múltiples")
-        fecha_campana = st.date_input("Fecha de la Campaña", value=datetime.today().date())
-        horario_inicio = st.time_input("Hora de Inicio", value=dt_time(9, 0))
-        # REMOVIDO: horario_fin = st.time_input("Hora de Fin", value=dt_time(17, 0))
-        
-        # --- CORRECCIÓN AQUÍ: 'estado_campana' del selectbox se usará con la clave correcta ---
-        estado_campana_seleccionado = st.selectbox("Estado de la Campaña", ["Próxima", "En Curso", "Finalizada"])
+    with st.form("crear_campana_form"):
+        nombre = st.text_input("Nombre de la Campaña")
+        ubicacion = st.text_input("Ubicación")
+        fecha = st.date_input("Fecha", value=datetime.today().date())
+        hora = st.time_input("Hora de Inicio", value=dt_time(9, 0))
+        estado = st.selectbox("Estado", ["Próxima", "En Curso", "Finalizada"])
+        submit = st.form_submit_button("Publicar Campaña")
 
-        guardar_campana = st.form_submit_button("🚀 Publicar Campaña")
-
-        if guardar_campana:
-            # Validaciones básicas
-            if not nombre_campana or not ubicacion:
-                st.error("Por favor, completa el nombre y la ubicación de la campaña.")
-            # REMOVIDA: elif horario_inicio >= horario_fin:
-            # REMOVIDA: st.error("La hora de inicio debe ser anterior a la hora de fin.")
-            else:
-                datos_campana = {
-                    "id_hospital": hospital_id_logueado, # <-- CORRECCIÓN
-                    "nombre_campana": nombre_campana,    # <-- CORRECCIÓN
-                    "ubicacion": ubicacion,              # <-- CORRECCIÓN
-                    "fecha_inicio": fecha_campana.isoformat(), # <-- CORRECCIÓN
-                    "horario_inicio": horario_inicio.isoformat(), # <-- CORRECCIÓN
-                    # REMOVIDO: "horario_fin": horario_fin.isoformat(),     # <-- REMOVIDO
-                    "estado_campana": estado_campana_seleccionado, # <-- CORRECCIÓN: Usar la variable seleccionada y nombre de columna en minúsculas
-                    # Si tu tabla `campaña` tiene `fecha_fin` (en minúsculas) como campo obligatorio
-                    # y no es lo mismo que `fecha_inicio`, deberás añadirlo al formulario y aquí.
-                    # Basado en tu captura de pantalla, `fecha_fin` sí existe, así que podrías querer añadirlo:
-                    # "fecha_fin": fecha_campana.isoformat(), # O un campo de fecha de fin diferente si lo necesitas
-                }
-                if crear_nueva_campana_solidaria(datos_campana):
-                    st.balloons()
-                    st.rerun()
+        if submit and nombre and ubicacion:
+            datos = {
+                "id_hospital": hospital_id,
+                "nombre_campana": nombre,
+                "ubicacion": ubicacion,
+                "fecha_inicio": fecha.isoformat(),
+                "horario_inicio": hora.isoformat(),
+                "estado_campana": estado,
+            }
+            if crear_nueva_campana_solidaria(datos):
+                st.balloons()
+                st.rerun()
 
     st.markdown("---")
-    st.markdown("### Campañas Solidarias Existentes")
+    st.markdown("### Campañas Existentes")
+    campañas = obtener_campanas_solidarias_hospital(hospital_id)
 
-    # --- Sección para VER y Gestionar Campañas Solidarias Existentes ---
-    campanas = obtener_campanas_solidarias_hospital(hospital_id_logueado)
+    for camp in campañas:
+        with st.expander(f"{camp['nombre_campana']} ({camp['estado_campana']})"):
+            st.write(f"**Ubicación:** {camp['ubicacion']}")
+            st.write(f"**Fecha:** {camp['fecha_inicio']}")
+            st.write(f"**Hora de Inicio:** {camp['horario_inicio']}")
+            if camp['estado_campana'] in ["Próxima", "En Curso"]:
+                if st.button(f"Finalizar {camp['nombre_campana']}", key=f"finalizar_{camp['id_campana']}"):
+                    if finalizar_campana_solidaria(camp['id_campana']):
+                        st.rerun()
 
-    if campanas:
-        for campana in campanas:
-            estado = campana.get("estado_campana", "N/A") # <-- CORRECCIÓN
-            fecha_display = campana.get("fecha_inicio", "N/A") # <-- CORRECCIÓN
-
-            with st.expander(f"Campaña: {campana.get('nombre_campana', 'Sin Nombre')} (Estado: {estado})"): # <-- CORRECCIÓN
-                st.write(f"**ID Campaña:** {campana.get('id_campana', 'N/A')}") # <-- CORRECCIÓN
-                st.write(f"**Ubicación:** {campana.get('ubicacion', 'N/A')}") # <-- CORRECCIÓN
-                st.write(f"**Fecha:** {fecha_display}")
-                # Ajustado para mostrar solo horario_inicio
-                st.write(f"**Horario:** {campana.get('horario_inicio', 'N/A')}") 
-                
-                # Botón para finalizar campaña, solo si está "En Curso" o "Próxima"
-                if estado == "En Curso" or estado == "Próxima":
-                    if st.button(f"Finalizar Campaña '{campana.get('nombre_campana')}'", key=f"finalizar_{campana.get('id_campana')}"): # <-- CORRECCIÓN
-                        if finalizar_campana_solidaria(campana.get("id_campana")): # <-- CORRECCIÓN
-                            st.rerun() # Recargar la página después de finalizar
-                elif estado == "Finalizada":
-                    st.info("Esta campaña ha sido finalizada.")
-            st.markdown("---")
-    else:
-        st.info("No hay campañas solidarias disponibles para tu hospital.")
-
-
-# --- Lógica principal de la página del Hospital ---
+# --- Lógica principal ---
 if __name__ == "__main__":
     if st.session_state.get("logged_in") and st.session_state.get("user_type") == "Hospital":
         st.sidebar.title("Navegación Hospital 🧭")
-        menu = ["Perfil", "Campañas Solidarias"]
-        opcion = st.sidebar.selectbox("Selecciona una sección", menu)
+        opcion = st.sidebar.selectbox("Sección", ["Perfil", "Campañas Solidarias"])
 
         if opcion == "Perfil":
             hospital_perfil()
         elif opcion == "Campañas Solidarias":
             hospital_campanas_solidarias()
     else:
-        st.warning("⚠️ Debes iniciar sesión como **Hospital** para acceder a esta página.")
+        st.warning("Inicia sesión como Hospital para acceder.")
         if st.button("Ir a Inicio de Sesión"):
-            st.session_state['logged_in'] = False
-            st.session_state['user_type'] = None
+            st.session_state["logged_in"] = False
+            st.session_state["user_type"] = None
             st.rerun()
