@@ -186,7 +186,7 @@ def hospital_campanas_solidarias():
         nombre_campana = st.text_input("Nombre de la Campaña", placeholder="Jornada de Donación - Verano 2025")
         ubicacion = st.text_input("Ubicación de la Campaña", placeholder="Ej: Hall principal, Salón de usos múltiples")
         fecha_campana = st.date_input("Fecha de la Campaña", value=datetime.today().date())
-        horario_inicio = st.time_input("Hora de Inicio", value=dt_time(9, 0))
+        # REMOVED: horario_inicio = st.time_input("Hora de Inicio", value=dt_time(9, 0))
         estado_campana_seleccionado = st.selectbox("Estado de la Campaña", ["Próxima", "En Curso", "Finalizada"])
 
         guardar_campana = st.form_submit_button("🚀 Publicar Campaña")
@@ -200,7 +200,7 @@ def hospital_campanas_solidarias():
                     "nombre_campana": nombre_campana,
                     "ubicacion": ubicacion,
                     "fecha_inicio": fecha_campana.isoformat(),
-                    "horario_inicio": horario_inicio.isoformat(),
+                    # REMOVED: "horario_inicio": horario_inicio.isoformat(),
                     "estado_campana": estado_campana_seleccionado,
                 }
                 if crear_nueva_campana_solidaria(datos_campana):
@@ -221,7 +221,7 @@ def hospital_campanas_solidarias():
                 st.write(f"**ID Campaña:** {campana.get('id_campana', 'N/A')}")
                 st.write(f"**Ubicación:** {campana.get('ubicacion', 'N/A')}")
                 st.write(f"**Fecha:** {fecha_display}")
-                st.write(f"**Horario:** {campana.get('horario_inicio', 'N/A')}") 
+                # REMOVED: st.write(f"**Horario:** {campana.get('horario_inicio', 'N/A')}") 
                 
                 if estado == "En Curso" or estado == "Próxima":
                     if st.button(f"Finalizar Campaña '{campana.get('nombre_campana')}'", key=f"finalizar_{campana.get('id_campana')}"):
