@@ -216,10 +216,8 @@ def hospital_campanas_solidarias():
             estado = campana.get("estado_campana", "N/A")
             fecha_display = campana.get("fecha_inicio", "N/A")
 
-            # Muestra el estado en rojo si es "Próxima", o con color normal si es "En Curso" o "Finalizada"
-            estado_color = "red" if estado == "Próxima" else "inherit"
-            
-            with st.expander(f"Campaña: {campana.get('nombre_campana', 'Sin Nombre')} (Estado: <span style='color:{estado_color};'>**{estado}**</span>)", unsafe_allow_html=True):
+            # REVERTIDO: Eliminado unsafe_allow_html del título del expander
+            with st.expander(f"Campaña: {campana.get('nombre_campana', 'Sin Nombre')} (Estado: {estado})"):
                 st.write(f"**ID Campaña:** {campana.get('id_campana', 'N/A')}")
                 st.write(f"**Ubicación:** {campana.get('ubicacion', 'N/A')}")
                 st.write(f"**Fecha:** {fecha_display}")
