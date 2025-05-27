@@ -134,9 +134,10 @@ def registrar_donante_en_db(nombre, dni, mail, telefono, direccion, tipo_sangre,
         st.error(f"Error al registrar donante en Supabase: {e}")
         return False
 
-def registrar_beneficiario_en_db(nombre, apellido, dni, mail, telefono, direccion, contrafija):
+def registrar_beneficiario_en_db(nombre, apellido, dni, mail, telefono, direccion, tipo_sangre, contrafija):
     """
     Registra un nuevo beneficiario en la tabla 'beneficiario' de Supabase.
+    Añadido 'tipo_sangre' para el beneficiario.
     """
     if supabase_client is None: # CORREGIDO: De === a is None
         st.error("Conexión a Supabase no disponible. No se puede registrar.")
@@ -161,6 +162,7 @@ def registrar_beneficiario_en_db(nombre, apellido, dni, mail, telefono, direccio
             "mail": mail,
             "telefono": telefono,
             "direccion": direccion,
+            "tipo_de_sangre": tipo_sangre, # Nuevo campo para beneficiario
             "contrafija": contrafija # ¡Recuerda hashear esto en producción!
         }
         response = supabase_client.table("beneficiario").insert(data).execute()
@@ -338,15 +340,20 @@ else: # Si el usuario NO está logueado
                     new_dni = st.text_input("DNI", key="ben_dni")
                     new_telefono = st.text_input("Teléfono", key="ben_telefono")
                     new_direccion = st.text_input("Dirección", key="ben_direccion")
+                    
+                    # --- Campo de Tipo de Sangre para Beneficiario ---
+                    tipos_sangre = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
+                    new_tipo_sangre_beneficiario = st.selectbox("Tipo de Sangre", tipos_sangre, key="ben_tipo_sangre")
 
                     register_button = st.form_submit_button("Registrar Beneficiario")
                     if register_button:
                         if new_password != confirm_password:
                             st.error("Las contraseñas no coinciden.")
-                        elif not all([new_nombre, new_apellido, new_dni, new_email, new_telefono, new_direccion, new_password]):
+                        elif not all([new_nombre, new_apellido, new_dni, new_email, new_telefono, new_direccion, new_tipo_sangre_beneficiario, new_password]): # Añade el tipo de sangre a la validación
                             st.error("Por favor, completa todos los campos.")
                         else:
-                            if registrar_beneficiario_en_db(new_nombre, new_apellido, new_dni, new_email, new_telefono, new_direccion, new_password):
+                            # Llama a la función registrar_beneficiario_en_db con el nuevo campo
+                            if registrar_beneficiario_en_db(new_nombre, new_apellido, new_dni, new_email, new_telefono, new_direccion, new_tipo_sangre_beneficiario, new_password):
                                 st.session_state['show_register_form'] = False
                                 time.sleep(1)
                                 st.rerun()
