@@ -51,10 +51,10 @@ def verificar_credenciales_desde_db(email, password, user_type):
 
     if user_type == "Donante":
         tabla = "donante"
-        id_columna_db = "ID_Donante"
+        id_columna_db = "ID_Donante" # Asegúrate de que esta sea la columna de ID en tu tabla donante
     elif user_type == "Beneficiario":
         tabla = "beneficiario"
-        id_columna_db = "ID_Beneficiario"
+        id_columna_db = "ID_Beneficiario" # Asegúrate de que esta sea la columna de ID en tu tabla beneficiario
     elif user_type == "Hospital":
         tabla = "hospital"
         id_columna_db = "id_hospital" # Asegúrate de que esta sea la columna de ID en tu tabla hospital
@@ -87,7 +87,11 @@ def verificar_credenciales_desde_db(email, password, user_type):
         st.error(f"Error al verificar credenciales en Supabase: {e}")
         return False, None, None
 
-def registrar_donante_en_db(nombre, apellido, dni, mail, telefono, direccion, tipo_sangre, rh, contrafija):
+def registrar_donante_en_db(nombre, dni, mail, telefono, direccion, tipo_sangre, rh, edad, sexo, antecedentes, medicaciones, contrafija):
+    """
+    Registra un nuevo donante en la tabla 'donante' de Supabase.
+    Ahora incluye edad, sexo, antecedentes y medicaciones.
+    """
     if supabase_client is None:
         st.error("Conexión a Supabase no disponible. No se puede registrar.")
         return False
@@ -106,13 +110,16 @@ def registrar_donante_en_db(nombre, apellido, dni, mail, telefono, direccion, ti
 
         data = {
             "nombre": nombre,
-            "apellido": apellido,
             "dni": dni,
             "mail": mail,
             "telefono": telefono,
             "direccion": direccion,
-            "tipo_sangre": tipo_sangre,
+            "tipo_de_sangre": tipo_sangre, # Ajustado para coincidir con el nombre de la columna en Supabase
             "rh": rh,
+            "edad": edad,
+            "sexo": sexo,
+            "antecedentes": antecedentes,
+            "medicaciones": medicaciones,
             "contrafija": contrafija # ¡Recuerda hashear esto en producción!
         }
         response = supabase_client.table("donante").insert(data).execute()
@@ -127,7 +134,10 @@ def registrar_donante_en_db(nombre, apellido, dni, mail, telefono, direccion, ti
         return False
 
 def registrar_beneficiario_en_db(nombre, apellido, dni, mail, telefono, direccion, contrafija):
-    if supabase_client is None:
+    """
+    Registra un nuevo beneficiario en la tabla 'beneficiario' de Supabase.
+    """
+    if supabase_client is None: # CORREGIDO: De === a is None
         st.error("Conexión a Supabase no disponible. No se puede registrar.")
         return False
 
@@ -164,6 +174,9 @@ def registrar_beneficiario_en_db(nombre, apellido, dni, mail, telefono, direccio
         return False
 
 def registrar_hospital_en_db(nombre_hospital, direccion, telefono, mail, contrafija):
+    """
+    Registra un nuevo hospital en la tabla 'hospital' de Supabase.
+    """
     if supabase_client is None:
         st.error("Conexión a Supabase no disponible. No se puede registrar.")
         return False
@@ -285,10 +298,17 @@ else: # Si el usuario NO está logueado
                     st.write("---")
                     st.markdown("##### Datos del Donante")
                     new_nombre = st.text_input("Nombre", key="don_nombre")
-                    new_apellido = st.text_input("Apellido", key="don_apellido")
+                    # Apellido ha sido eliminado
                     new_dni = st.text_input("DNI", key="don_dni")
                     new_telefono = st.text_input("Teléfono", key="don_telefono")
                     new_direccion = st.text_input("Dirección", key="don_direccion")
+                    
+                    # Nuevos campos añadidos desde la tabla de Supabase
+                    new_edad = st.number_input("Edad", min_value=18, max_value=99, key="don_edad", help="Debes tener al menos 18 años para ser donante.")
+                    new_sexo = st.selectbox("Sexo", ["Masculino", "Femenino", "Otro"], key="don_sexo")
+                    new_antecedentes = st.text_area("Antecedentes Médicos (opcional)", help="Ej: 'Alergia al polen', 'Hipertensión leve'", key="don_antecedentes")
+                    new_medicaciones = st.text_area("Medicaciones Actuales (opcional)", help="Ej: 'Antihistamínicos', 'Losartan'", key="don_medicaciones")
+
                     tipos_sangre = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
                     new_tipo_sangre = st.selectbox("Tipo de Sangre", tipos_sangre, key="don_tipo_sangre")
                     rh_options = ["Positivo", "Negativo"]
@@ -298,10 +318,11 @@ else: # Si el usuario NO está logueado
                     if register_button:
                         if new_password != confirm_password:
                             st.error("Las contraseñas no coinciden.")
-                        elif not all([new_nombre, new_apellido, new_dni, new_email, new_telefono, new_direccion, new_tipo_sangre, new_rh, new_password]):
-                            st.error("Por favor, completa todos los campos.")
+                        # Actualizada la validación para los campos obligatorios
+                        elif not all([new_nombre, new_dni, new_email, new_telefono, new_direccion, new_tipo_sangre, new_rh, new_edad, new_sexo, new_password]):
+                            st.error("Por favor, completa todos los campos obligatorios (Nombre, DNI, Email, Teléfono, Dirección, Tipo de Sangre, Factor Rh, Edad, Sexo, Contraseña).")
                         else:
-                            if registrar_donante_en_db(new_nombre, new_apellido, new_dni, new_email, new_telefono, new_direccion, new_tipo_sangre, new_rh, new_password):
+                            if registrar_donante_en_db(new_nombre, new_dni, new_email, new_telefono, new_direccion, new_tipo_sangre, new_rh, new_edad, new_sexo, new_antecedentes, new_medicaciones, new_password):
                                 st.session_state['show_register_form'] = False
                                 time.sleep(1)
                                 st.rerun()
