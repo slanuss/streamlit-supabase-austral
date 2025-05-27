@@ -87,10 +87,11 @@ def verificar_credenciales_desde_db(email, password, user_type):
         st.error(f"Error al verificar credenciales en Supabase: {e}")
         return False, None, None
 
-def registrar_donante_en_db(nombre, dni, mail, telefono, direccion, tipo_sangre, rh, edad, sexo, antecedentes, medicaciones, contrafija):
+def registrar_donante_en_db(nombre, dni, mail, telefono, direccion, tipo_sangre, edad, sexo, antecedentes, medicaciones, contrafija):
     """
     Registra un nuevo donante en la tabla 'donante' de Supabase.
     Ahora incluye edad, sexo, antecedentes y medicaciones.
+    Se ha eliminado 'rh'.
     """
     if supabase_client is None:
         st.error("Conexión a Supabase no disponible. No se puede registrar.")
@@ -115,7 +116,7 @@ def registrar_donante_en_db(nombre, dni, mail, telefono, direccion, tipo_sangre,
             "telefono": telefono,
             "direccion": direccion,
             "tipo_de_sangre": tipo_sangre, # Ajustado para coincidir con el nombre de la columna en Supabase
-            "rh": rh,
+            # "rh": rh, # <-- Eliminado
             "edad": edad,
             "sexo": sexo,
             "antecedentes": antecedentes,
@@ -311,18 +312,20 @@ else: # Si el usuario NO está logueado
 
                     tipos_sangre = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
                     new_tipo_sangre = st.selectbox("Tipo de Sangre", tipos_sangre, key="don_tipo_sangre")
-                    rh_options = ["Positivo", "Negativo"]
-                    new_rh = st.selectbox("Factor Rh", rh_options, key="don_rh")
+                    # Factor Rh ha sido eliminado
+                    # rh_options = ["Positivo", "Negativo"]
+                    # new_rh = st.selectbox("Factor Rh", rh_options, key="don_rh")
 
                     register_button = st.form_submit_button("Registrar Donante")
                     if register_button:
                         if new_password != confirm_password:
                             st.error("Las contraseñas no coinciden.")
                         # Actualizada la validación para los campos obligatorios
-                        elif not all([new_nombre, new_dni, new_email, new_telefono, new_direccion, new_tipo_sangre, new_rh, new_edad, new_sexo, new_password]):
-                            st.error("Por favor, completa todos los campos obligatorios (Nombre, DNI, Email, Teléfono, Dirección, Tipo de Sangre, Factor Rh, Edad, Sexo, Contraseña).")
+                        elif not all([new_nombre, new_dni, new_email, new_telefono, new_direccion, new_tipo_sangre, new_edad, new_sexo, new_password]): # Elimina new_rh
+                            st.error("Por favor, completa todos los campos obligatorios (Nombre, DNI, Email, Teléfono, Dirección, Tipo de Sangre, Edad, Sexo, Contraseña).")
                         else:
-                            if registrar_donante_en_db(new_nombre, new_dni, new_email, new_telefono, new_direccion, new_tipo_sangre, new_rh, new_edad, new_sexo, new_antecedentes, new_medicaciones, new_password):
+                            # Llama a la función sin new_rh
+                            if registrar_donante_en_db(new_nombre, new_dni, new_email, new_telefono, new_direccion, new_tipo_sangre, new_edad, new_sexo, new_antecedentes, new_medicaciones, new_password):
                                 st.session_state['show_register_form'] = False
                                 time.sleep(1)
                                 st.rerun()
