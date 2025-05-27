@@ -54,7 +54,7 @@ def verificar_credenciales_desde_db(email, password, user_type):
         id_columna_db = "ID_Donante" # Asegúrate de que esta sea la columna de ID en tu tabla donante
     elif user_type == "Beneficiario":
         tabla = "beneficiario"
-        id_columna_db = "id_beneficio" # <--- ¡CAMBIADO A 'id_beneficio' (minúsculas)!
+        id_columna_db = "id_beneficiario" # <--- ¡CAMBIADO A 'id_beneficio' (minúsculas)!
     elif user_type == "Hospital":
         tabla = "hospital"
         id_columna_db = "id_hospital" # Asegúrate de que esta sea la columna de ID en tu tabla hospital
