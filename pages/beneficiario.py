@@ -1,224 +1,169 @@
-# pages/beneficiario.py
 import streamlit as st
 from supabase import create_client, Client
 import os
 from dotenv import load_dotenv
-from datetime import datetime
 
-# Carga las variables de entorno
+# Carga las variables de entorno para Supabase
 load_dotenv()
 
-# --- Configuración de Supabase ---
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
-if not SUPABASE_URL or not SUPABASE_KEY:
-    st.error("Las variables de entorno SUPABASE_URL y SUPABASE_KEY no están configuradas en el .env para beneficiario.py.")
-    supabase_client = None
-else:
+# Inicializa el cliente de Supabase una vez
+# Se añade una comprobación para asegurar que las variables de entorno están cargadas
+if SUPABASE_URL and SUPABASE_KEY:
     try:
         supabase_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
     except Exception as e:
         st.error(f"Error al inicializar cliente Supabase en beneficiario.py: {e}")
-        supabase_client = None
+        supabase_client: Client = None # Asegurarse de que sea None si hay un error
+else:
+    st.error("Advertencia: Las variables de entorno SUPABASE_URL y SUPABASE_KEY no están configuradas en el .env en beneficiario.py.")
+    supabase_client: Client = None
 
-def guardar_perfil_beneficiario_supabase(datos_beneficiario: dict, actualizar: bool = False, beneficiario_mail: str = None):
-    if supabase_client:
-        try:
-            if actualizar and beneficiario_mail:
-                # Asegúrate que 'mail' es la columna correcta para la condición WHERE
-                data, count = supabase_client.table("beneficiario").update(datos_beneficiario).eq("mail", beneficiario_mail).execute()
-                if data and len(data) > 0:
-                    st.success("✅ Perfil de beneficiario actualizado en Supabase con éxito!")
-                    return True
-                else:
-                    st.warning("⚠️ No se encontró el perfil para actualizar o no hubo cambios. ¿El correo existe en la base de datos?")
-                    return False
-            else:
-                data, count = supabase_client.table("beneficiario").insert(datos_beneficiario).execute()
-                if data and len(data) > 0:
-                    st.success("✅ Perfil de beneficiario guardado en Supabase con éxito!")
-                    return True
-                else:
-                    st.error("❌ Error al guardar el perfil del beneficiario en Supabase. No se insertaron registros.")
-                    return False
-        except Exception as e:
-            st.error(f"❌ Error de conexión, inserción o actualización en Supabase (beneficiario): {e}")
+
+def get_beneficiario_data(beneficiario_id):
+    """Obtiene los datos del beneficiario desde la base de datos de forma más robusta."""
+    if supabase_client is None:
+        st.error("Conexión a Supabase no disponible. No se pueden obtener datos del beneficiario.")
+        return None
+    try:
+        # Eliminamos .single() para evitar errores si no se encuentra el registro o hay múltiples
+        response = supabase_client.table("beneficiario").select("*").eq("id_beneficio", beneficiario_id).limit(1).execute()
+        if response.data:
+            return response.data[0] # Retorna el primer (y único esperado) resultado
+        return None
+    except Exception as e:
+        st.error(f"Error al obtener datos del beneficiario: {e}")
+        return None
+
+def get_beneficiario_campaign(beneficiario_id):
+    """
+    Verifica si el beneficiario tiene una campaña activa.
+    ASUMIMOS:
+    - Que la tabla de campañas se llama 'campana' (o 'campania' si es el caso).
+    - Que tiene una columna 'id_beneficio' que se relaciona con el beneficiario.
+    - Que tiene una columna 'estado' que puede ser 'activa', 'finalizada', etc.
+    """
+    if supabase_client is None:
+        st.error("Conexión a Supabase no disponible. No se pueden obtener datos de campaña.")
+        return None
+    try:
+        # Busca campañas activas asociadas a este beneficiario
+        response = supabase_client.table("campana").select("*").eq("id_beneficio", beneficiario_id).eq("estado", "activa").limit(1).execute()
+        if response.data:
+            return response.data[0] # Retorna la primera campaña activa encontrada
+        return None
+    except Exception as e:
+        st.error(f"Error al verificar la campaña del beneficiario: {e}")
+        return None
+
+def create_new_campaign_db(beneficiario_id, tipo_sangre_requerida, cantidad_requerida, descripcion, fecha_limite):
+    """
+    Crea una nueva campaña en la base de datos.
+    Ajusta los nombres de las columnas según tu tabla 'campana'.
+    """
+    if supabase_client is None:
+        st.error("Conexión a Supabase no disponible. No se puede crear la campaña.")
+        return False
+    try:
+        data = {
+            "id_beneficio": beneficiario_id, # Columna que relaciona con el beneficiario
+            "tipo_sangre_requerida": tipo_sangre_requerida, # ASUME este nombre de columna
+            "cantidad_requerida": cantidad_requerida, # ASUME este nombre de columna
+            "descripcion": descripcion, # ASUME este nombre de columna
+            "fecha_limite": fecha_limite, # ASUME este nombre de columna
+            "estado": "activa" # Estado inicial de la campaña
+            # Aquí podrías añadir 'id_hospital' si los hospitales también pueden crear campañas,
+            # o 'fecha_creacion' si tu tabla no tiene una columna para ello.
+        }
+        response = supabase_client.table("campana").insert(data).execute()
+        if response.data:
+            st.success("Campaña creada exitosamente!")
+            return True
+        else:
+            st.error(f"Error al crear campaña: {response.status_code} - {response.data}")
             return False
-    else:
-        st.warning("⚠️ No se pudo conectar a Supabase para guardar/actualizar el perfil del beneficiario. Revisa tus variables .env.")
+    except Exception as e:
+        st.error(f"Error al crear campaña en Supabase: {e}")
         return False
 
-def obtener_perfil_beneficiario(email_beneficiario: str):
-    """
-    Obtiene el perfil de un beneficiario desde Supabase usando su email.
-    Asegúrate que la columna de email en tu tabla 'beneficiario' se llame 'mail'.
-    """
-    if supabase_client:
-        try:
-            response = supabase_client.table("beneficiario").select("*").eq("mail", email_beneficiario).limit(1).execute()
-            if response.data:
-                return response.data[0] # Retorna el primer (y único) registro encontrado
-            else:
-                st.info(f"ℹ️ No se encontró un perfil de beneficiario con el email: {email_beneficiario}. Crea uno nuevo.")
-                return None
-        except Exception as e:
-            st.error(f"❌ Error al obtener perfil del beneficiario desde Supabase: {e}. Asegúrate que la tabla 'beneficiario' existe y tiene una columna 'mail'.")
-            return None
-    return None
-
-
-def crear_campana_supabase(datos_campana: dict):
-    if supabase_client:
-        try:
-            data, count = supabase_client.table("campaña").insert(datos_campana).execute()
-            if data and len(data) > 0:
-                st.success("🎉 Campaña creada y guardada en Supabase con éxito!")
-                return True
-            else:
-                st.error("❌ Error al guardar la campaña en Supabase. No se insertaron registros.")
-                return False
-        except Exception as e:
-            st.error(f"❌ Error de conexión o inserción en Supabase (campaña): {e}")
-            return False
-    else:
-        st.warning("⚠️ No se pudo conectar a Supabase para guardar la campaña. Revisa tus variables .env.")
-        return False
-
-# --- Secciones de la página del Beneficiario ---
 def beneficiario_perfil():
-    st.markdown("<h2 style='color: #4682B4;'>Mi Perfil de Beneficiario 📝</h2>", unsafe_allow_html=True)
-    st.write("Mantén tu información actualizada para que podamos asistirte de la mejor manera.")
+    st.markdown("## Área de Beneficiario")
 
-    email_usuario_logueado = st.session_state.get('user_email', 'beneficiario@ejemplo.com')
-    beneficiario_id_logueado = st.session_state.get('user_db_id')
-
-    # Intentamos obtener el perfil existente basado en el email logueado
-    perfil_existente = obtener_perfil_beneficiario(email_usuario_logueado)
-
-    # Inicializa los valores por defecto del formulario
-    valores_iniciales = {
-        "NombreB": "",
-        "mail": email_usuario_logueado,
-        "Teléfono": "",
-        "Dirección": "",
-        "Tipo de Sangre": "O+",  # Valor por defecto
-    }
-
-    # Si se encontró un perfil existente, sobrescribe los valores por defecto
-    if perfil_existente:
-        st.info(f"✨ Datos de perfil cargados para: **{perfil_existente.get('NombreB', 'N/A')}**")
-        valores_iniciales["NombreB"] = perfil_existente.get("NombreB", "")
-        valores_iniciales["mail"] = perfil_existente.get("mail", email_usuario_logueado)
-        valores_iniciales["Teléfono"] = perfil_existente.get("Teléfono", "")
-        valores_iniciales["Dirección"] = perfil_existente.get("Dirección", "")
-        
-        # Asegurarse de que el tipo de sangre es una opción válida para el selectbox
-        sangre_opciones = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
-        if perfil_existente.get("Tipo de Sangre") in sangre_opciones:
-            valores_iniciales["Tipo de Sangre"] = perfil_existente.get("Tipo de Sangre")
-        else: # Si el valor de la DB no es válido, usa el valor por defecto
-            valores_iniciales["Tipo de Sangre"] = "O+" 
-
-    with st.form("perfil_beneficiario_form"):
-        st.markdown("#### Información Personal")
-        col1, col2 = st.columns(2)
-        with col1:
-            # Asegúrate que el key 'NombreB' exista en tu tabla de Supabase para beneficiarios
-            NombreB = st.text_input("Nombre y Apellido", value=valores_iniciales["NombreB"])
-            mail = st.text_input("Mail de Contacto", value=valores_iniciales["mail"], disabled=True)
-        with col2:
-            # Asegúrate que el key 'Teléfono' exista en tu tabla de Supabase para beneficiarios
-            Teléfono = st.text_input("Teléfono de Contacto", value=valores_iniciales["Teléfono"])
-            # Asegúrate que el key 'Dirección' exista en tu tabla de Supabase para beneficiarios
-            Dirección = st.text_input("Dirección del Beneficiario", value=valores_iniciales["Dirección"])
-
-        st.markdown("#### Requerimientos Médicos")
-        sangre_options = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
-        # Calcula el índice para el selectbox
-        try:
-            sangre_index = sangre_options.index(valores_iniciales["Tipo de Sangre"])
-        except ValueError:
-            sangre_index = 0 # Si el valor de la DB no es válido, selecciona el primero
-        
-        Tipo_de_Sangre = st.selectbox("Tipo de Sangre Requerido", sangre_options, index=sangre_index)
-
-        st.write("---")
-        guardar_button = st.form_submit_button("💾 Guardar Perfil" if not perfil_existente else "🔄 Actualizar Perfil")
-
-        if guardar_button:
-            datos_a_guardar = {
-                "NombreB": NombreB, "mail": mail, "Teléfono": Teléfono, "Dirección": Dirección,
-                "Tipo de Sangre": Tipo_de_Sangre,
-            }
-            if perfil_existente:
-                guardar_perfil_beneficiario_supabase(datos_a_guardar, actualizar=True, beneficiario_mail=mail)
-            else:
-                guardar_perfil_beneficiario_supabase(datos_a_guardar)
-
-def beneficiario_crear_campana():
-    st.markdown("<h2 style='color: #4682B4;'>Crea tu Campaña de Donación ✨</h2>", unsafe_allow_html=True)
-    st.write("Genera una nueva solicitud para donación de sangre. Sé claro y conciso para atraer a los donantes.")
-
-    beneficiario_id_logueado = st.session_state.get('user_db_id')
+    # Obtener el ID del beneficiario de la sesión
+    beneficiario_id = st.session_state.get('user_db_id')
     
-    if not beneficiario_id_logueado:
-        st.warning("⚠️ No se pudo obtener tu ID de Beneficiario. Por favor, asegúrate de haber completado tu perfil en la sección 'Perfil' para que tu ID sea guardado.")
-        st.info("El ID de Beneficiario es necesario para asociar la campaña a ti. Si recién creaste tu perfil, cierra sesión y vuelve a iniciarla.")
+    # ¡IMPORTANTE! Verificar que el beneficiario_id no sea None
+    if not beneficiario_id:
+        st.warning("No se pudo cargar el perfil del beneficiario. Por favor, asegúrate de haber iniciado sesión correctamente.")
+        st.info("Si el problema persiste, verifica la configuración de tu `SUPABASE_URL` y `SUPABASE_KEY` en el archivo `.env` y el `id_columna_db` en `main.py` para el beneficiario.")
         return
 
-    with st.form("crear_campana_form"):
-        st.markdown("#### Detalles de la Campaña")
-        nombre_campana = st.text_input("Nombre de la Campaña", max_chars=100, help="Un título claro para tu solicitud.")
-        descripcion_campana = st.text_area("Descripción de la Campaña", max_chars=500, help="Detalla por qué necesitas la donación y qué esperas.")
+    # Pestañas
+    tab1, tab2 = st.tabs(["📊 Mi Perfil", "📢 Mis Campañas"])
+
+    with tab1:
+        st.markdown("### Datos de tu Perfil")
+        beneficiario_data = get_beneficiario_data(beneficiario_id)
+        if beneficiario_data:
+            st.write(f"**Nombre:** {beneficiario_data.get('nombre', 'N/A')}")
+            st.write(f"**Email:** {beneficiario_data.get('mail', 'N/A')}")
+            st.write(f"**Teléfono:** {beneficiario_data.get('telefono', 'N/A')}")
+            st.write(f"**Dirección:** {beneficiario_data.get('direccion', 'N/A')}")
+            st.write(f"**Tipo de Sangre Requerido:** {beneficiario_data.get('tipo_de_sangre', 'N/A')}")
+            # Aquí podrías añadir un botón para editar el perfil si lo deseas
+        else:
+            st.info("Cargando datos del perfil o el perfil no se encontró. Asegúrate de que el ID del beneficiario sea correcto.")
+
+    with tab2:
+        st.markdown("### Gestión de Campañas de Donación")
         
-        col1, col2 = st.columns(2)
-        with col1:
-            tipo_sangre_requerida = st.selectbox("Tipo de Sangre Requerida", ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"], help="El tipo de sangre que necesitas.")
-        with col2:
-            fecha_limite = st.date_input("Fecha Límite para Donaciones", min_value=datetime.today().date(), help="Fecha hasta la cual se aceptan donaciones.") 
-        
-        hospital_id = st.number_input("ID del Hospital (donde se donará)", min_value=1, value=1, help="Ingresa el ID del hospital donde se realizará la donación.") 
+        current_campaign = get_beneficiario_campaign(beneficiario_id)
 
-        st.write("---")
-        crear_campana_button = st.form_submit_button("🚀 Crear Campaña")
+        if current_campaign:
+            st.success("¡Tienes una campaña de donación en curso!")
+            st.write(f"**Campaña ID:** {current_campaign.get('id_campana', 'N/A')}") # ASUME 'id_campana' como ID de campaña
+            st.write(f"**Tipo de Sangre Requerida:** {current_campaign.get('tipo_sangre_requerida', 'N/A')}")
+            st.write(f"**Cantidad Requerida:** {current_campaign.get('cantidad_requerida', 'N/A')} unidades")
+            st.write(f"**Descripción:** {current_campaign.get('descripcion', 'N/A')}")
+            st.write(f"**Fecha Límite:** {current_campaign.get('fecha_limite', 'N/A')}")
+            st.write(f"**Estado:** {current_campaign.get('estado', 'N/A')}")
+            
+            # Aquí podrías añadir botones para 'Finalizar Campaña', 'Ver Progreso', etc.
+            if st.button("Finalizar Campaña (no funcional aún)"):
+                st.info("Funcionalidad para finalizar campaña en desarrollo.")
 
-        if crear_campana_button:
-            if not nombre_campana or not descripcion_campana:
-                st.error("❌ Por favor, completa el nombre y la descripción de la campaña.")
-                return
+        else:
+            st.info("Actualmente no tienes ninguna campaña de donación activa.")
+            st.markdown("### Crea una Nueva Campaña")
+            
+            with st.form("create_campaign_form", clear_on_submit=True):
+                # Obtener el tipo de sangre del beneficiario automáticamente
+                beneficiario_data = get_beneficiario_data(beneficiario_id)
+                if beneficiario_data and beneficiario_data.get('tipo_de_sangre'):
+                    default_blood_type = beneficiario_data.get('tipo_de_sangre')
+                    st.write(f"**Tu tipo de sangre es:** {default_blood_type}")
+                    st.markdown("---")
+                    st.info("La campaña se creará para tu tipo de sangre.")
+                    # No permitimos cambiarlo para simplificar, se asume que piden para ellos.
+                else:
+                    st.warning("No se pudo determinar tu tipo de sangre. Por favor, asegúrate de que esté registrado en tu perfil.")
+                    default_blood_type = None # Cambiado a None si no se encuentra
+                
+                campaign_cantidad = st.number_input("Cantidad de Unidades Requeridas", min_value=1, max_value=10, value=1, help="¿Cuántas unidades de sangre necesitas?")
+                campaign_descripcion = st.text_area("Descripción de la Campaña (opcional)", help="Ej: 'Urgente para cirugía de emergencia', 'Para tratamiento continuo'")
+                campaign_fecha_limite = st.date_input("Fecha Límite (opcional)", help="Hasta cuándo te gustaría que esté activa la campaña.")
 
-            datos_campana = {
-                "ID_Hospital": hospital_id,
-                "Nombre_Campaña": nombre_campana,
-                "Descripcion_Campaña": descripcion_campana,
-                "Tipo_Sangre_Requerida": tipo_sangre_requerida,
-                "Fecha_Limite": fecha_limite.strftime("%Y-%m-%d"),
-                "ID_Beneficiario": beneficiario_id_logueado
-            }
-            crear_campana_supabase(datos_campana)
+                create_campaign_button = st.form_submit_button("Crear Campaña")
 
-def beneficiario_historial_donaciones():
-    st.markdown("<h2 style='color: #4682B4;'>Historial de Donaciones Recibidas 📊</h2>", unsafe_allow_html=True)
-    st.info("Aquí podrás ver un registro de las donaciones que has recibido a través de las campañas.")
-    st.markdown("<p><i>Esta sección se desarrollará en futuras actualizaciones.</i></p>", unsafe_allow_html=True)
-
-# --- Lógica principal de la página del Beneficiario ---
-if __name__ == "__main__":
-    if st.session_state.get('logged_in') and st.session_state.get('user_type') == 'Beneficiario':
-        st.sidebar.title("Navegación Beneficiario 🎯")
-        menu = ["Perfil", "Crear Campaña", "Historial de Donaciones"]
-        opcion = st.sidebar.selectbox("Selecciona una sección", menu)
-
-        if opcion == "Perfil":
-            beneficiario_perfil()
-        elif opcion == "Crear Campaña":
-            beneficiario_crear_campana()
-        elif opcion == "Historial de Donaciones":
-            beneficiario_historial_donaciones()
-    else:
-        st.warning("⚠️ Debes iniciar sesión como **Beneficiario** para acceder a esta página.")
-        if st.button("Ir a Inicio de Sesión"):
-            st.session_state['logged_in'] = False
-            st.session_state['user_type'] = None
-            st.rerun()
+                if create_campaign_button:
+                    if not default_blood_type:
+                        st.error("No se puede crear la campaña sin un tipo de sangre definido. Por favor, completa tu perfil.")
+                    elif not campaign_cantidad:
+                         st.error("Por favor, ingresa la cantidad de unidades requeridas.")
+                    else:
+                        # Llama a la función para crear la campaña
+                        if create_new_campaign_db(beneficiario_id, default_blood_type, campaign_cantidad, campaign_descripcion, campaign_fecha_limite):
+                            st.success("Campaña creada. Actualizando...")
+ 
