@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 import time
 import os
 from dotenv import load_dotenv
@@ -23,192 +24,262 @@ else:
         st.error(f"Error al inicializar cliente Supabase: {e}")
         supabase_client: Client = None
 
-# --- Funciones para Beneficiario ---
-
-def obtener_datos_beneficiario(beneficiario_email):
+# --- Función para obtener datos del donante ---
+def obtener_datos_donante(donante_email):
     if supabase_client is None:
-        st.error("Conexión a Supabase no disponible. No se pueden obtener datos.")
+        st.error("Conexión a Supabase no disponible. No se pueden obtener datos del donante.")
         return None
     try:
-        response = supabase_client.table("beneficiario").select("*, id_beneficiario").eq("mail", beneficiario_email).execute()
+        # Asumiendo que la columna de ID es 'ID_Donante'
+        response = supabase_client.table("donante").select("*, ID_Donante").eq("mail", donante_email).execute()
         if response.data:
             return response.data[0]
         else:
             return None
     except Exception as e:
-        st.error(f"Error al obtener datos del beneficiario: {e}")
+        st.error(f"Error al obtener datos del donante: {e}")
         return None
 
-def crear_campana(id_beneficiario, nombre_campana, tipo_sangre, fecha_inicio, fecha_fin, ubicacion, estado_campana):
+# --- Función para actualizar datos del donante ---
+def actualizar_datos_donante(donante_email, datos):
     if supabase_client is None:
-        st.error("Conexión a Supabase no disponible. No se puede crear campaña.")
+        st.error("Conexión a Supabase no disponible. No se pueden actualizar datos del donante.")
         return False
     try:
-        # Asegúrate de que los nombres de las columnas coincidan con tu tabla 'campaña' en Supabase
-        data = {
-            "id_beneficiario": id_beneficiario,
-            "nombre_campana": nombre_campana,
-            "tipo_sangre_requerida": tipo_sangre, 
-            "fecha_inicio": fecha_inicio,
-            "fecha_fin": fecha_fin,
-            "ubicacion": ubicacion,
-            "estado_campana": estado_campana,
-            # Si tienes una columna 'descripcion' en tu DB, agrégala aquí y en los parámetros de la función
-            # "descripcion": descripcion_campana,
-        }
-        response = supabase_client.table("campaña").insert(data).execute()
+        response = supabase_client.table("donante").update(datos).eq("mail", donante_email).execute()
         if response.data:
-            st.success("🎉 ¡Campaña creada exitosamente!")
+            st.success("✅ ¡Perfil actualizado con éxito!")
+            time.sleep(1)
+            st.rerun()
             return True
         else:
-            st.error(f"❌ Error al crear campaña: {response.status_code} - {response.text}")
+            st.error(f"❌ Error al actualizar: {response.status_code} - {response.text}")
             return False
     except Exception as e:
-        st.error(f"❌ Error al conectar con Supabase para crear campaña: {e}")
+        st.error(f"❌ Error inesperado al actualizar datos: {e}")
         return False
 
-def obtener_mis_campanas(id_beneficiario):
-    if supabase_client is None:
-        st.error("Conexión a Supabase no disponible. No se pueden obtener campañas.")
-        return []
-    try:
-        # Aquí también, asegura que los nombres de las columnas son correctos
-        # Las columnas que se muestran en tus capturas son:
-        # id_beneficiario, id_hospital, fecha_inicio, fecha_fin, ubicacion, nombre_campana, estado_campana, tipo_sangre_requerida
-        response = supabase_client.table("campaña").select("id_campana, nombre_campana, fecha_inicio, fecha_fin, ubicacion, estado_campana, tipo_sangre_requerida").eq("id_beneficiario", id_beneficiario).order("fecha_inicio", desc=True).execute()
-        if response.data:
-            return response.data
-        else:
+# --- Funciones de Campañas ---
+def obtener_campanas_activas():
+    if supabase_client:
+        try:
+            hoy = datetime.now().strftime("%Y-%m-%d")
+            # Ajustar nombres de columnas si son diferentes en tu DB (e.g., 'nombre_campana' en lugar de 'Nombre_Campaña')
+            # Si tu tabla de campaña usa 'estado_campana' y no 'Fecha_Limite', la consulta sería:
+            response = supabase_client.table("campaña").select("*, id_campana").eq("estado_campana", "En curso").order("fecha_fin", desc=False).execute()
+            # Si aún usas Fecha_Limite y quieres que se muestre, asegúrate de que sea así en la DB
+            # response = supabase_client.table("campaña").select("*, id_campana").gte("Fecha_Limite", hoy).order("Fecha_Limite", desc=False).execute()
+            if response.data:
+                return response.data
+            else:
+                return []
+        except Exception as e:
+            st.error(f"❌ Error al obtener campañas desde Supabase: {e}")
             return []
-    except Exception as e:
-        st.error(f"❌ Error al cargar tus campañas: {e}")
-        st.error("Asegúrate de que la tabla 'campaña' exista y las RLS permitan la lectura.")
-        return []
+    return []
 
-def finalizar_campana_db(campana_id):
-    if supabase_client is None:
-        st.error("Conexión a Supabase no disponible. No se puede finalizar campaña.")
-        return False
-    try:
-        # Actualiza el estado de la campaña
-        response = supabase_client.table("campaña").update({"estado_campana": "Finalizada"}).eq("id_campana", campana_id).execute()
-        if response.data:
-            st.success(f"✅ Campaña {campana_id} finalizada con éxito.")
-            return True
-        else:
-            st.error(f"❌ Error al finalizar campaña: {response.status_code} - {response.text}")
+def inscribirse_campana(campana_id: int, donante_id: int):
+    if supabase_client:
+        try:
+            existing_inscription = supabase_client.table("inscripciones_campana").select("*").eq("ID_Campaña", campana_id).eq("ID_Donante", donante_id).execute()
+            if existing_inscription.data:
+                st.warning("⚠️ Ya estás inscrito en esta campaña.")
+                return False
+
+            data, count = supabase_client.table("inscripciones_campana").insert({
+                "ID_Campaña": campana_id,
+                "ID_Donante": donante_id,
+                "Fecha_Inscripcion": datetime.now().strftime("%Y-%m-%d")
+            }).execute()
+            if data and len(data) > 0:
+                st.success(f"🎉 ¡Te has inscrito exitosamente a la campaña {campana_id}!")
+                return True
+            else:
+                st.error("❌ No se pudo completar la inscripción.")
+                return False
+        except Exception as e:
+            st.error(f"❌ Error al inscribirse en la campaña: {e}")
             return False
-    except Exception as e:
-        st.error(f"❌ Error al finalizar campaña en Supabase: {e}")
-        return False
+    return False
 
+# --- Definición de las funciones de sección ---
+def donante_perfil():
+    st.markdown("<h2 style='color: #B22222;'>Mi Perfil de Donante 📝</h2>", unsafe_allow_html=True)
+    st.write("Actualiza y gestiona tu información personal para ayudarnos a conectar mejor con quienes te necesitan.")
 
-# --- Funciones de sección de Beneficiario ---
-def beneficiario_crear_campana():
-    st.markdown("<h2 style='color: #B22222;'>Crear Nueva Campaña de Donación ✨</h2>", unsafe_allow_html=True)
-    st.write("Configura los detalles de tu nueva campaña para solicitar donantes.")
+    email_usuario_logueado = st.session_state.get('user_email', 'donante@ejemplo.com')
+    donante_id_logueado = st.session_state.get('user_db_id')
 
-    beneficiario_data = obtener_datos_beneficiario(st.session_state['user_email'])
-    beneficiario_id = beneficiario_data.get('id_beneficiario') if beneficiario_data else None
+    perfil_existente = obtener_datos_donante(email_usuario_logueado)
+
+    valores_iniciales = {
+        "nombred": "", "mail": email_usuario_logueado, "telefono": "", "direccion": "",
+        "edad": 18, "sexo": "Masculino", "tipo_de_sangre": "A+",
+        "antecedentes": "", "medicaciones": "", "cumple_requisitos": False
+    }
     
-    if not beneficiario_id:
-        st.warning("No se pudo obtener el ID del beneficiario. Asegúrate de que tu perfil esté completo y el email de sesión sea correcto.")
-        return
-
-    # Usar el tipo de sangre del beneficiario registrado para la campaña si es necesario
-    tipo_sangre_beneficiario = beneficiario_data.get('tipo_de_sangre', 'O+') if beneficiario_data else 'O+'
-
-    with st.form("crear_campana_form"):
-        nombre_campana = st.text_input("Nombre de la Campaña", help="Ej: 'Campaña Urgente A+'")
+    if perfil_existente:
+        st.info(f"✨ Datos de perfil cargados para: **{perfil_existente.get('nombred', 'N/A')}**")
+        valores_iniciales["nombred"] = perfil_existente.get("nombred", "")
+        valores_iniciales["mail"] = perfil_existente.get("mail", email_usuario_logueado)
+        valores_iniciales["telefono"] = perfil_existente.get("telefono", "")
+        valores_iniciales["direccion"] = perfil_existente.get("direccion", "")
+        valores_iniciales["edad"] = perfil_existente.get("edad", 18)
         
-        # Si tienes una columna de descripción en tu DB, la agregas aquí:
-        # descripcion_campana = st.text_area("Descripción de la Campaña (opcional)")
+        sexo_opciones = ["Masculino", "Femenino", "Otro"]
+        if perfil_existente.get("sexo") and perfil_existente.get("sexo") in sexo_opciones:
+            valores_iniciales["sexo"] = perfil_existente.get("sexo")
+        elif perfil_existente.get("sexo") == 'M': # Para compatibilidad si usas solo M/F en DB
+            valores_iniciales["sexo"] = "Masculino"
+        elif perfil_existente.get("sexo") == 'F': # Para compatibilidad si usas solo M/F en DB
+            valores_iniciales["sexo"] = "Femenino"
 
+        sangre_opciones = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
+        if perfil_existente.get("tipo_de_sangre") in sangre_opciones:
+            valores_iniciales["tipo_de_sangre"] = perfil_existente.get("tipo_de_sangre")
+        
+        valores_iniciales["antecedentes"] = perfil_existente.get("antecedentes", "")
+        valores_iniciales["medicaciones"] = perfil_existente.get("medicaciones", "")
+        valores_iniciales["cumple_requisitos"] = perfil_existente.get("cumple_requisitos", False)
+
+
+    with st.form("perfil_form"):
+        st.markdown("#### Información Personal")
         col1, col2 = st.columns(2)
         with col1:
-            fecha_inicio = st.date_input("Fecha de Inicio", datetime.now())
+            nombre = st.text_input("Nombre y Apellido", value=valores_iniciales["nombred"])
+            mail = st.text_input("Mail Personal", value=valores_iniciales["mail"], disabled=True)
+            telefono = st.text_input("Teléfono", value=valores_iniciales["telefono"])
         with col2:
-            fecha_fin = st.date_input("Fecha Límite para la Donación", datetime.now())
+            direccion = st.text_input("Dirección", value=valores_iniciales["direccion"])
+            edad = st.number_input("Edad", min_value=18, max_value=100, step=1, value=valores_iniciales["edad"])
+            
+            sexo_options = ["Masculino", "Femenino", "Otro"]
+            sexo_index = sexo_options.index(valores_iniciales["sexo"]) if valores_iniciales["sexo"] in sexo_options else 0
+            sexo = st.selectbox("Sexo", sexo_options, index=sexo_index)
 
-        ubicacion = st.text_input("Ubicación de la Donación", help="Ej: 'Hospital Central, Sala 5'")
-        
-        tipos_sangre = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
-        tipo_sangre_requerida = st.selectbox("Tipo de Sangre Requerida", tipos_sangre, index=tipos_sangre.index(tipo_sangre_beneficiario) if tipo_sangre_beneficiario in tipos_sangre else 0)
-        st.info(f"Tu tipo de sangre registrado es: **{tipo_sangre_beneficiario}**. Esto se asociará a la campaña.")
-        
-        estado_campana = st.selectbox("Estado Inicial", ["En curso", "Próxima", "Finalizada"], index=0) # Añadir "Finalizada" para la creación si es necesario
+        st.markdown("#### Información Médica")
+        sangre_options = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
+        sangre_index = sangre_options.index(valores_iniciales["tipo_de_sangre"]) if valores_iniciales["tipo_de_sangre"] in sangre_options else 0
+        tipo_de_sangre = st.selectbox("Tipo de Sangre", sangre_options, index=sangre_index)
 
+        antecedentes = st.text_area("Antecedentes Médicos (ej. alergias, cirugías previas)", value=valores_iniciales["antecedentes"])
+        medicaciones = st.text_area("Medicaciones Actuales (ej. medicamentos que tomas)", value=valores_iniciales["medicaciones"])
+        
+        cumple_requisitos_cb = st.checkbox("¿Cumples con los requisitos generales para donar sangre?", value=valores_iniciales["cumple_requisitos"])
+        
         st.write("---")
-        crear_button = st.form_submit_button("Crear Campaña")
+        guardar = st.form_submit_button("💾 Guardar Perfil" if not perfil_existente else "🔄 Actualizar Perfil")
 
-        if crear_button:
-            if not all([nombre_campana, fecha_inicio, fecha_fin, ubicacion, tipo_sangre_requerida]):
-                st.error("Por favor, completa todos los campos obligatorios.")
-            elif fecha_fin < fecha_inicio:
-                st.error("La fecha límite no puede ser anterior a la fecha de inicio.")
+        if guardar:
+            datos_a_guardar = {
+                "nombred": nombre, "mail": mail, "telefono": telefono, "direccion": direccion,
+                "edad": edad, "sexo": sexo, "tipo_de_sangre": tipo_de_sangre,
+                "antecedentes": antecedentes, "medicaciones": medicaciones,
+                "cumple_requisitos": cumple_requisitos_cb,
+            }
+            st.write("Datos a guardar:", datos_a_guardar)
+            if perfil_existente:
+                actualizar_datos_donante(mail, datos_a_guardar)
             else:
-                if crear_campana(beneficiario_id, nombre_campana, tipo_sangre_requerida, fecha_inicio.strftime("%Y-%m-%d"), fecha_fin.strftime("%Y-%m-%d"), ubicacion, estado_campana):
-                    time.sleep(1)
-                    st.rerun() # CORRECCIÓN: Usar st.rerun()
+                st.warning("⚠️ La funcionalidad para crear un nuevo perfil de donante no se realiza desde aquí.")
+                st.info("Por favor, ve a la página principal para 'Crear una Cuenta Nueva' como Donante si aún no tienes una, o 'Inicia Sesión' si ya la tienes y quieres actualizar tu perfil.")
 
-def beneficiario_mis_campanas():
-    st.markdown("<h2 style='color: #B22222;'>Mis Campañas Creadas 📋</h2>", unsafe_allow_html=True)
-    st.write("Visualiza y gestiona el estado de tus campañas de donación.")
 
-    beneficiario_data = obtener_datos_beneficiario(st.session_state['user_email'])
-    beneficiario_id = beneficiario_data.get('id_beneficiario') if beneficiario_data else None
+# --- Funciones de Campañas y Hospitales ---
+def donante_campanas():
+    st.markdown("<h2 style='color: #B22222;'>Campañas de Donación Disponibles ❤️</h2>", unsafe_allow_html=True)
+    st.write("Aquí puedes explorar las solicitudes de donación de sangre y ofrecer tu ayuda.")
 
-    if not beneficiario_id:
-        st.warning("No se pudo obtener el ID del beneficiario. Asegúrate de que tu perfil esté completo y el email de sesión sea correcto.")
-        return
+    campanas = obtener_campanas_activas()
+    donante_id_logueado = st.session_state.get('user_db_id')
 
-    mis_campanas = obtener_mis_campanas(beneficiario_id)
+    if not donante_id_logueado:
+        st.warning("⚠️ Para inscribirte a campañas, asegúrate de que tu perfil de donante esté completo y tenga un ID válido. Completa el formulario de 'Perfil'.")
 
-    if mis_campanas:
-        for campana in mis_campanas:
+    if campanas:
+        for campana in campanas:
             # Asegúrate de usar los nombres de columna correctos de tu tabla 'campaña'
-            # CORRECCIÓN: Usar 'id_campana' y 'nombre_campana'
-            campana_id = campana.get('id_campana')
-            nombre_campana = campana.get('nombre_campana', 'N/A')
-            estado_campana = campana.get('estado_campana', 'N/A')
+            # Por ejemplo, si tienes 'nombre_campana' en lugar de 'Nombre_Campaña'
+            campana_nombre = campana.get('nombre_campana', 'Sin Nombre') # Ajusta esto
+            campana_sangre = campana.get('tipo_sangre_requerida', 'N/A') # Ajusta esto
+            campana_id = campana.get('id_campana') # Ajusta esto
 
-            with st.expander(f"Campaña: {nombre_campana} (Estado: {estado_campana})"):
-                st.write(f"**Fecha Inicio:** {campana.get('fecha_inicio', 'N/A')}")
-                st.write(f"**Fecha Límite:** {campana.get('fecha_fin', 'N/A')}")
-                st.write(f"**Ubicación:** {campana.get('ubicacion', 'N/A')}")
-                st.write(f"**Tipo de Sangre Requerida:** {campana.get('tipo_sangre_requerida', 'N/A')}")
+            with st.expander(f"Campaña: {campana_nombre} (Sangre: {campana_sangre})"):
+                st.write(f"**Descripción:** {campana.get('descripcion', 'N/A')}") # Ajusta esto si tu columna se llama diferente
+                st.write(f"**Fecha Límite:** {campana.get('fecha_fin', 'N/A')}") # Ajusta esto si tu columna se llama diferente
+                st.write(f"**ID de Campaña:** {campana_id if campana_id else 'N/A'}")
                 
-                # Si tienes una descripción:
-                # st.write(f"**Descripción:** {campana.get('descripcion', 'N/A')}")
-
-                if estado_campana != "Finalizada":
-                    if st.button(f"✅ Finalizar Campaña", key=f"finalizar_{campana_id}"):
-                        if finalizar_campana_db(campana_id):
+                if donante_id_logueado and campana_id is not None:
+                    if st.button(f"✨ Inscribirme a esta Campaña", key=f"inscribir_{campana_id}"):
+                        if inscribirse_campana(campana_id, donante_id_logueado):
                             st.balloons()
-                            time.sleep(1)
-                            st.rerun() # CORRECCIÓN: Usar st.rerun()
+                        else:
+                            st.error("Fallo la inscripción.")
                 else:
-                    st.info("Esta campaña ya ha sido finalizada.")
+                    st.info("Inicia sesión y completa tu perfil para poder inscribirte.")
             st.markdown("---")
     else:
-        st.info("ℹ️ Todavía no has creado ninguna campaña. ¡Crea una para empezar!")
+        st.info("ℹ️ No hay campañas de donación activas en este momento. ¡Vuelve pronto!")
 
-# --- Función principal de la página de Beneficiario ---
-def beneficiario_page():
-    st.title("🤝 Panel de Beneficiario")
+def donante_hospitales():
+    st.markdown("<h2 style='color: #B22222;'>Hospitales Asociados 🏥</h2>", unsafe_allow_html=True)
+    st.info("Aquí se mostrará la lista de hospitales asociados. La funcionalidad de mapa ha sido temporalmente deshabilitada para evitar errores de instalación.")
+    st.write("Puedes contactar a los siguientes hospitales para donar:")
+    st.markdown("""
+    * **Hospital General de Agudos Dr. Juan A. Fernández**
+    * **Hospital Alemán**
+    * **Hospital Británico de Buenos Aires**
+    * **Hospital Italiano de Buenos Aires**
+    * **Hospital de Clínicas José de San Martín**
+    """)
+    st.markdown("---")
+    st.info("💡 **Consejo:** Para futuras mejoras, podemos volver a implementar un mapa interactivo una vez que las dependencias estén estables.")
+
+def donante_requisitos():
+    st.markdown("<h2 style='color: #B22222;'>Requisitos para Donar Sangre ✅</h2>", unsafe_allow_html=True)
+    st.write("Infórmate sobre los criterios esenciales para ser un donante apto. Tu salud es nuestra prioridad.")
+    st.markdown("""
+    * **Edad:** Generalmente entre 18 y 65 años (con excepciones).
+    * **Peso:** Mínimo de 50 kg.
+    * **Salud General:** Sentirse bien y no tener enfermedades graves.
+    * **Hemoglobina:** Nivel adecuado de hemoglobina.
+    * **No haber donado recientemente:** Esperar el tiempo indicado entre donaciones.
+    * **Sin tatuajes o piercings recientes:** Respetar el período de espera.
+    * **Sin ciertas medicaciones o antecedentes:** Consultar con el personal médico.
+    """)
+    st.info("Esta es una lista general. Siempre consulta los requisitos específicos del centro de donación.")
+
+def donante_info_donaciones():
+    st.markdown("<h2 style='color: #B22222;'>Información sobre Donaciones 💡</h2>", unsafe_allow_html=True)
+    st.write("Aquí podrás ver un historial de tus donaciones y detalles relevantes.")
+    st.info("Esta sección está en desarrollo.")
+
+
+# --- Función principal de la página de Donante ---
+def donante_perfil_page():
+    st.title("💖 Panel de Donante")
     st.markdown("---")
 
-    # Verifica si el usuario está logueado como Beneficiario
-    if not st.session_state.get('logged_in') or st.session_state.get('user_type') != 'Beneficiario':
-        st.warning("Debes iniciar sesión como Beneficiario para acceder a esta página.")
-        st.stop()
+    # Verifica si el usuario está logueado como Donante
+    if not st.session_state.get('logged_in') or st.session_state.get('user_type') != 'Donante':
+        st.warning("Debes iniciar sesión como Donante para acceder a esta página.")
+        st.stop() # Detiene la ejecución de la página
 
-    tab1, tab2 = st.tabs(["Crear Campaña", "Mis Campañas"])
+    # Crea las pestañas para el donante
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Mi Perfil", "Campañas Activas", "Hospitales", "Requisitos", "Info Donaciones"])
 
     with tab1:
-        beneficiario_crear_campana()
+        donante_perfil()
     with tab2:
-        beneficiario_mis_campanas()
+        donante_campanas()
+    with tab3:
+        donante_hospitales()
+    with tab4:
+        donante_requisitos()
+    with tab5:
+        donante_info_donaciones()
 
 if __name__ == "__main__":
-    beneficiario_page()
+    # Si este archivo se ejecuta directamente, llama a la función de la página del donante
+    donante_perfil_page()
