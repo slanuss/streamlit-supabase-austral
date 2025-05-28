@@ -156,3 +156,4 @@ def beneficiario_perfil():
 
 # Asegúrate de que `beneficiario_perfil()` sea la función principal llamada desde `main.py`
 # No es necesario agregar `if __name__ == "__main__":` aquí, ya que se importará.
+
