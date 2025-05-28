@@ -180,8 +180,7 @@ def mis_campanas_tab():
                 estado_lower = campana.get('estado_campana', '').lower()
                 if estado_lower in ['en curso', 'próxima', 'activa']:
                     found_active = True
-                    # Usamos st.container() para agrupar los elementos de cada campaña
-                    with st.container(border=True): # Añadimos un borde para visualización
+                    with st.container(border=True):
                         st.markdown(f"#### {campana.get('nombre_campana', 'Campaña sin nombre')}")
                         st.write(f"**Descripción:** {campana.get('descripcion', 'N/A')}")
                         st.write(f"**Fecha Inicio:** {campana.get('fecha_inicio', 'N/A')}")
@@ -189,21 +188,22 @@ def mis_campanas_tab():
                         st.write(f"**Ubicación:** {campana.get('ubicacion', 'N/A')}")
                         st.write(f"**Estado:** `{campana.get('estado_campana', 'N/A')}`")
 
-                        # Añadir el botón para finalizar la campaña
-                        # Usamos una key única para cada botón
-                        if st.button(f"Finalizar Campaña", key=f"finalizar_{campana['id']}"): #
+                        # ASUMIENDO que la columna de ID en tu tabla 'campaña' se llama 'id_campana'
+                        # SI SE LLAMA DIFERENTE, CÁMBIALO AQUÍ: campana['EL_NOMBRE_DE_TU_COLUMNA_ID']
+                        if st.button(f"Finalizar Campaña", key=f"finalizar_{campana['id_campana']}"): # <<--- CAMBIO AQUÍ
                             try:
-                                update_response = supabase_client.table("campaña").update({"estado_campana": "Finalizada"}).eq("id", campana['id']).execute() #
-                                if update_response.data: #
-                                    st.success(f"Campaña '{campana.get('nombre_campana', '')}' finalizada con éxito.") #
-                                    time.sleep(1) #
-                                    st.rerun() #
+                                # Y también aquí en la consulta de actualización
+                                update_response = supabase_client.table("campaña").update({"estado_campana": "Finalizada"}).eq("id_campana", campana['id_campana']).execute() # <<--- CAMBIO AQUÍ
+                                if update_response.data:
+                                    st.success(f"Campaña '{campana.get('nombre_campana', '')}' finalizada con éxito.")
+                                    time.sleep(1)
+                                    st.rerun()
                                 else:
-                                    st.error(f"Error al finalizar la campaña: {update_response.error.message}") #
-                                    st.warning("Detalles técnicos: " + str(update_response.error)) #
+                                    st.error(f"Error al finalizar la campaña: {update_response.error.message}")
+                                    st.warning("Detalles técnicos: " + str(update_response.error))
                             except Exception as e:
-                                st.error(f"Error al conectar con Supabase para finalizar campaña: {e}") #
-                                st.exception(e) #
+                                st.error(f"Error al conectar con Supabase para finalizar campaña: {e}")
+                                st.exception(e)
                         st.markdown("---")
             if not found_active:
                 st.info("No tienes campañas activas o próximas en este momento.")
