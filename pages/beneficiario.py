@@ -72,16 +72,15 @@ def perfil_beneficiario_tab():
                         st.success("¡Perfil actualizado con éxito!")
                         st.balloons()
                         time.sleep(1)
-                        st.rerun()  # <<--- CAMBIO AQUÍ
+                        st.rerun()
                     else:
                         st.error(f"Error al actualizar el perfil: {update_response.error.message}")
                         st.warning("Detalles técnicos: " + str(update_response.error))
 
         else:
             st.warning("No se pudieron cargar los datos de tu perfil. Intenta nuevamente.")
-            # Puedes ofrecer una opción para recargar o contactar soporte
             if st.button("Recargar Perfil"):
-                st.rerun() # <<--- CAMBIO AQUÍ
+                st.rerun()
             return
 
     except Exception as e:
@@ -100,24 +99,19 @@ def crear_campana_tab():
         st.warning("No se encontró el ID de beneficiario en la sesión. Por favor, reinicia la sesión.")
         return
 
-    # Formulario para crear una nueva campaña
     with st.form("nueva_campana_form", clear_on_submit=True):
         st.markdown("Completa los siguientes datos para solicitar una donación de sangre.")
 
         nombre_campana = st.text_input("Nombre de la Campaña", help="Un título para tu solicitud de donación, ej: 'Urgente para Juan Pérez'.")
-        # Ahora sí, la columna 'descripcion' existe en la tabla 'campaña'
         descripcion = st.text_area("📝 Descripción Detallada", help="Ej: 'Se necesita sangre para operación de emergencia en Hospital Central.', 'Para paciente con anemia crónica, se agradecerá cualquier tipo de sangre.'.")
         
-        # Obtener la fecha actual
         today = date.today()
         
-        # Asumo que fecha_inicio es la fecha actual y fecha_fin es la fecha límite
         fecha_inicio_display = st.date_input("🗓️ Fecha de Inicio (automática)", value=today, disabled=True)
         fecha_fin = st.date_input("🗓️ Fecha Límite para la Donación", min_value=today, value=today, help="Fecha hasta la cual necesitas la donación.")
         
         ubicacion = st.text_input("📍 Ubicación de la Donación", help="Ej: 'Hospital Central, Sala 3', 'Clínica San Martín'.")
         
-        # Si tienes el tipo de sangre del beneficiario, lo puedes mostrar aquí como referencia
         try:
             beneficiario_response = supabase_client.table("beneficiario").select("tipo_de_sangre").eq("id_beneficiario", user_db_id).limit(1).execute()
             if beneficiario_response.data:
@@ -125,7 +119,7 @@ def crear_campana_tab():
                 st.info(f"Tu tipo de sangre registrado es: **{tipo_sangre_beneficiario}**. Esto se asociará a la campaña.")
             else:
                 st.warning("No se pudo obtener tu tipo de sangre registrado.")
-                tipo_sangre_beneficiario = None # Asegurarse de que no falle si no se encuentra
+                tipo_sangre_beneficiario = None
         except Exception as e:
             st.error(f"Error al obtener el tipo de sangre del beneficiario: {e}")
             tipo_sangre_beneficiario = None
@@ -136,22 +130,18 @@ def crear_campana_tab():
         if submit_button:
             if not nombre_campana or not descripcion or not ubicacion:
                 st.error("Por favor, completa todos los campos obligatorios: Nombre de la Campaña, Descripción y Ubicación.")
-            elif fecha_fin < fecha_inicio_display: # Usar fecha_inicio_display que es `today`
+            elif fecha_fin < fecha_inicio_display:
                 st.error("La fecha límite no puede ser anterior a la fecha de inicio.")
             else:
                 try:
                     data_to_insert = {
                         "nombre_campana": nombre_campana,
-                        "descripcion": descripcion, # Esta es la columna que faltaba
-                        "fecha_inicio": str(fecha_inicio_display), # Usar la fecha de inicio actual
+                        "descripcion": descripcion,
+                        "fecha_inicio": str(fecha_inicio_display),
                         "fecha_fin": str(fecha_fin),
                         "ubicacion": ubicacion,
                         "id_beneficiario": user_db_id,
-                        # "id_hospital": None, # Si no lo estás usando, déjalo comentado o como NULL
-                        "estado_campana": "En curso" # Estado inicial
-                        # Si necesitas el tipo de sangre en la campaña, debes añadir la columna 'tipo_de_sangre_requerido' a tu tabla 'campaña'
-                        # y luego descomentar la siguiente línea:
-                        # "tipo_de_sangre_requerido": tipo_sangre_beneficiario,
+                        "estado_campana": "En curso"
                     }
 
                     insert_response = supabase_client.table("campaña").insert(data_to_insert).execute()
@@ -160,7 +150,7 @@ def crear_campana_tab():
                         st.success(f"¡Campaña '{nombre_campana}' creada exitosamente!")
                         st.balloons()
                         time.sleep(1)
-                        st.rerun() # <<--- CAMBIO AQUÍ
+                        st.rerun()
                     else:
                         st.error(f"Error al crear la campaña: {insert_response.error.message}")
                         st.warning("Detalles técnicos: " + str(insert_response.error))
@@ -181,31 +171,43 @@ def mis_campanas_tab():
         return
 
     try:
-        # Obtener las campañas del beneficiario
-        # Asumo que 'id_beneficiario' es la FK en 'campaña' que apunta a 'beneficiario'
         campanas_response = supabase_client.table("campaña").select("*").eq("id_beneficiario", user_db_id).order("fecha_fin", desc=False).execute()
 
         if campanas_response.data:
             st.subheader("Campañas Pendientes/En Curso:")
             found_active = False
             for campana in campanas_response.data:
-                # Filtrar o clasificar por estado_campana
                 estado_lower = campana.get('estado_campana', '').lower()
-                if estado_lower in ['en curso', 'próxima', 'activa']: # Añadí 'activa' por si usas ese estado
+                if estado_lower in ['en curso', 'próxima', 'activa']:
                     found_active = True
-                    st.markdown(f"#### {campana.get('nombre_campana', 'Campaña sin nombre')}")
-                    st.write(f"**Descripción:** {campana.get('descripcion', 'N/A')}")
-                    st.write(f"**Fecha Inicio:** {campana.get('fecha_inicio', 'N/A')}")
-                    st.write(f"**Fecha Límite:** {campana.get('fecha_fin', 'N/A')}")
-                    st.write(f"**Ubicación:** {campana.get('ubicacion', 'N/A')}")
-                    st.write(f"**Estado:** `{campana.get('estado_campana', 'N/A')}`")
-                    # if campana.get('tipo_de_sangre_requerido'): # Si añades esta columna
-                    #     st.write(f"**Tipo de Sangre Necesario:** {campana.get('tipo_de_sangre_requerido', 'N/A')}")
-                    st.markdown("---")
+                    # Usamos st.container() para agrupar los elementos de cada campaña
+                    with st.container(border=True): # Añadimos un borde para visualización
+                        st.markdown(f"#### {campana.get('nombre_campana', 'Campaña sin nombre')}")
+                        st.write(f"**Descripción:** {campana.get('descripcion', 'N/A')}")
+                        st.write(f"**Fecha Inicio:** {campana.get('fecha_inicio', 'N/A')}")
+                        st.write(f"**Fecha Límite:** {campana.get('fecha_fin', 'N/A')}")
+                        st.write(f"**Ubicación:** {campana.get('ubicacion', 'N/A')}")
+                        st.write(f"**Estado:** `{campana.get('estado_campana', 'N/A')}`")
+
+                        # Añadir el botón para finalizar la campaña
+                        # Usamos una key única para cada botón
+                        if st.button(f"Finalizar Campaña", key=f"finalizar_{campana['id']}"): #
+                            try:
+                                update_response = supabase_client.table("campaña").update({"estado_campana": "Finalizada"}).eq("id", campana['id']).execute() #
+                                if update_response.data: #
+                                    st.success(f"Campaña '{campana.get('nombre_campana', '')}' finalizada con éxito.") #
+                                    time.sleep(1) #
+                                    st.rerun() #
+                                else:
+                                    st.error(f"Error al finalizar la campaña: {update_response.error.message}") #
+                                    st.warning("Detalles técnicos: " + str(update_response.error)) #
+                            except Exception as e:
+                                st.error(f"Error al conectar con Supabase para finalizar campaña: {e}") #
+                                st.exception(e) #
+                        st.markdown("---")
             if not found_active:
                 st.info("No tienes campañas activas o próximas en este momento.")
 
-            # Opcional: Mostrar campañas finalizadas
             st.subheader("Campañas Finalizadas:")
             found_finished = False
             for campana in campanas_response.data:
@@ -234,12 +236,10 @@ def beneficiario_perfil_page():
     st.title("👤 Panel de Beneficiario")
     st.markdown("---")
 
-    # Asegurarse de que el usuario esté logueado como beneficiario
     if not st.session_state.get('logged_in') or st.session_state.get('user_type') != 'Beneficiario':
         st.warning("Debes iniciar sesión como Beneficiario para acceder a esta página.")
-        st.stop() # Detiene la ejecución de la página
+        st.stop()
 
-    # Definir las pestañas
     tab1, tab2, tab3 = st.tabs(["Mi Perfil", "Crear Campaña", "Mis Campañas"])
 
     with tab1:
@@ -249,6 +249,5 @@ def beneficiario_perfil_page():
     with tab3:
         mis_campanas_tab()
 
-# Punto de entrada principal para esta página
 if __name__ == "__main__":
     beneficiario_perfil_page()
