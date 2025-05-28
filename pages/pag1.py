@@ -1,15 +1,14 @@
-<<<<<<< Updated upstream
-=======
 import streamlit as st
 from datetime import date
 from supabase import create_client, Client
 from dotenv import load_dotenv
+import os
 
 def hospital_page():
     # Cargar claves desde .env
     load_dotenv()
-    SUPABASE_URL = "https://ocqcjqltxynqsnnuvjbo.supabase.co"
-    SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIs..."
+    SUPABASE_URL = os.getenv("SUPABASE_URL", "https://ocqcjqltxynqsnnuvjbo.supabase.co")
+    SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIs...")
 
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -17,7 +16,6 @@ def hospital_page():
     st.markdown(
         """
         <div style='text-align: center;'>
-            <img src='gotita.png' width='120'>
             <h1 style='color: #d90429;'>🩸 Crear nueva solicitud de sangre</h1>
             <p style='font-size: 18px;'>Complete el siguiente formulario para solicitar unidades de sangre.</p>
         </div>
@@ -54,6 +52,6 @@ def hospital_page():
         except Exception as e:
             st.error(f"❌ Error al guardar en Supabase: {e}")
 
-
-
->>>>>>> Stashed changes
+# Si este archivo se ejecuta directamente
+if __name__ == "__main__":
+    hospital_page()
