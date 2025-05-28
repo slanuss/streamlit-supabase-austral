@@ -72,7 +72,7 @@ def perfil_beneficiario_tab():
                         st.success("¡Perfil actualizado con éxito!")
                         st.balloons()
                         time.sleep(1)
-                        st.experimental_rerun()  # Recargar para mostrar los cambios
+                        st.rerun()  # <<--- CAMBIO AQUÍ
                     else:
                         st.error(f"Error al actualizar el perfil: {update_response.error.message}")
                         st.warning("Detalles técnicos: " + str(update_response.error))
@@ -81,7 +81,7 @@ def perfil_beneficiario_tab():
             st.warning("No se pudieron cargar los datos de tu perfil. Intenta nuevamente.")
             # Puedes ofrecer una opción para recargar o contactar soporte
             if st.button("Recargar Perfil"):
-                st.experimental_rerun()
+                st.rerun() # <<--- CAMBIO AQUÍ
             return
 
     except Exception as e:
@@ -160,7 +160,7 @@ def crear_campana_tab():
                         st.success(f"¡Campaña '{nombre_campana}' creada exitosamente!")
                         st.balloons()
                         time.sleep(1)
-                        st.experimental_rerun() # Recarga para mostrar la nueva campaña en la pestaña "Mis Campañas"
+                        st.rerun() # <<--- CAMBIO AQUÍ
                     else:
                         st.error(f"Error al crear la campaña: {insert_response.error.message}")
                         st.warning("Detalles técnicos: " + str(insert_response.error))
