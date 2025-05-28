@@ -42,13 +42,15 @@ def verificar_credenciales_desde_db(email, password, user_type):
 
     if user_type == "Donante":
         tabla = "donante"
-        id_columna_db = "ID_Donante" # Asumiendo que la columna de ID es 'ID_Donante'
+        # ¡¡¡ESTA ES LA LÍNEA CRÍTICA A VERIFICAR!!!
+        # Basado en tus capturas, lo más probable es 'id_donante' (minúsculas, guion bajo)
+        id_columna_db = "id_donante" # <--- CORRECCIÓN CLAVE AQUÍ
     elif user_type == "Beneficiario":
         tabla = "beneficiario"
-        id_columna_db = "id_beneficiario" # Asumiendo que la columna de ID es 'id_beneficiario'
+        id_columna_db = "id_beneficiario" # Asumiendo este nombre para Beneficiario
     elif user_type == "Hospital":
         tabla = "hospital"
-        id_columna_db = "id_hospital" # Asumiendo que la columna de ID es 'id_hospital'
+        id_columna_db = "id_hospital" # Asumiendo este nombre para Hospital
     else:
         st.error("Tipo de usuario no válido.")
         return False, None, None
