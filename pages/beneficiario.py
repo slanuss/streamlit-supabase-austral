@@ -1,8 +1,9 @@
-# pages/beneficiario.py
 import streamlit as st
-from supabase import create_client, Client
 import os
 from dotenv import load_dotenv
+from supabase import create_client, Client
+import time
+from datetime import date
 
 # Carga las variables de entorno para Supabase
 load_dotenv()
@@ -10,166 +11,243 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
 supabase_client: Client = None
-if not SUPABASE_URL or not SUPABASE_KEY:
-    st.error("❌ ERROR CRÍTICO en beneficiario.py: Las variables de entorno SUPABASE_URL y SUPABASE_KEY no están configuradas.")
-    st.info("Verifica el archivo .env. No se podrá conectar a la base de datos.")
-else:
+
+if SUPABASE_URL and SUPABASE_KEY:
     try:
         supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        # st.success("✅ Conexión a Supabase establecida en beneficiario.py.") # Mensaje de depuración
     except Exception as e:
-        st.error(f"❌ ERROR CRÍTICO al inicializar cliente Supabase en beneficiario.py: {e}")
-        st.info("Verifica tu URL y Key de Supabase. Podría ser un problema de red o credenciales.")
-        supabase_client = None
+        st.error(f"Error al inicializar cliente Supabase en beneficiario.py: {e}")
+else:
+    st.error("SUPABASE_URL o SUPABASE_KEY no están configuradas en .env. No se puede conectar a la base de datos.")
 
-# Modificamos la función para aceptar una pestaña inicial
-def beneficiario_perfil(initial_tab=None):
-    st.markdown("<h2 style='text-align: center; color: #B22222;'>Bienvenido a tu Perfil de Beneficiario</h2>", unsafe_allow_html=True)
-    st.write("Aquí puedes gestionar tus solicitudes de donación y ver tu información.")
 
-    user_email = st.session_state.get('user_email')
+def perfil_beneficiario_tab():
+    st.header("Datos de mi Perfil")
+    st.markdown("---")
+
     user_db_id = st.session_state.get('user_db_id')
-    user_type = st.session_state.get('user_type')
+    user_email = st.session_state.get('user_email')
 
-    # --- Verificación crucial del estado de la sesión ---
-    if not user_email or user_db_id is None:
-        st.error("❌ ERROR: No se pudo cargar la información de tu sesión (email o ID).")
-        st.info(f"Debug Info: Email='{user_email}', ID='{user_db_id}', Tipo='{user_type}'")
-        st.warning("Por favor, cierra sesión y vuelve a iniciarla. Si el problema persiste, contacta al soporte.")
-        return # Sale de la función si no hay datos de sesión válidos
-    
-    st.success(f"✅ Sesión de beneficiario activa: Email='{user_email}', ID de Beneficiario='{user_db_id}'")
+    if not user_db_id:
+        st.warning("No se encontró el ID de beneficiario en la sesión. Por favor, reinicia la sesión.")
+        return
 
-    st.subheader(f"Hola, {beneficiario_data.get('nombre', 'Usuario') if 'beneficiario_data' in locals() else user_email}!") # Intenta mostrar el nombre si ya se cargó, sino el email
+    try:
+        # Obtener los datos del beneficiario de Supabase
+        response = supabase_client.table("beneficiario").select("*").eq("id_beneficiario", user_db_id).limit(1).execute()
 
-    # Mapeo de initial_tab a índice de la pestaña
-    tab_titles = ["📊 Mi Perfil", "💉 Mis Campañas de Donación", "✨ Crear Nueva Campaña"]
-    initial_tab_index = 0 # Por defecto, la primera pestaña
-    if initial_tab == 'beneficiario_mis_campanas':
-        initial_tab_index = 1
-    elif initial_tab == 'beneficiario_crear_campana':
-        initial_tab_index = 2
+        if response.data:
+            beneficiario_data = response.data[0]
 
-    tab1, tab2, tab3 = st.tabs(tab_titles, initial_tab=initial_tab_index) # Usamos initial_tab aquí
+            # Formulario para mostrar y modificar el perfil
+            with st.form("perfil_form", clear_on_submit=False):
+                st.info("Solo se pueden modificar los campos habilitados.")
+                nombre = st.text_input("Nombre", value=beneficiario_data.get('nombre', ''))
+                # El email y tipo de sangre no se deberían poder cambiar fácilmente desde aquí
+                email = st.text_input("Email", value=beneficiario_data.get('mail', ''), disabled=True)
+                telefono = st.text_input("Teléfono", value=beneficiario_data.get('telefono', ''))
+                direccion = st.text_input("Dirección", value=beneficiario_data.get('direccion', ''))
+                tipo_sangre_beneficiario = st.text_input("Tipo de Sangre (Registrado)", value=beneficiario_data.get('tipo_de_sangre', ''), disabled=True)
 
-    tipos_sangre = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
+                st.markdown("---")
+                update_button = st.form_submit_button("Actualizar Perfil")
 
-    with tab1:
-        st.header("Información de tu Perfil")
-        if supabase_client:
-            try:
-                response = supabase_client.table("beneficiario").select("*").eq("id_beneficiario", user_db_id).limit(1).execute()
-                
-                if response.data:
-                    beneficiario_data = response.data[0] # Almacena los datos del beneficiario aquí
-                    st.write(f"**Nombre:** {beneficiario_data.get('nombre', 'N/A')}")
-                    st.write(f"**Email:** {beneficiario_data.get('mail', 'N/A')}")
-                    st.write(f"**Teléfono:** {beneficiario_data.get('telefono', 'N/A')}")
-                    st.write(f"**Dirección:** {beneficiario_data.get('direccion', 'N/A')}")
-                    st.write(f"**Tipo de Sangre Requerido:** {beneficiario_data.get('tipo_de_sangre', 'N/A')}")
-                    
-                    st.markdown("---")
-                    st.subheader("Actualizar Perfil")
-                    with st.form("update_beneficiario_profile"):
-                        updated_nombre = st.text_input("Nombre", value=beneficiario_data.get('nombre', ''))
-                        updated_telefono = st.text_input("Teléfono", value=beneficiario_data.get('telefono', ''))
-                        updated_direccion = st.text_input("Dirección", value=beneficiario_data.get('direccion', ''))
-                        
-                        current_tipo_sangre = beneficiario_data.get('tipo_de_sangre', 'O+')
-                        if current_tipo_sangre not in tipos_sangre:
-                            current_tipo_sangre = 'O+'
-                        
-                        updated_tipo_sangre = st.selectbox("Tipo de Sangre Requerido", tipos_sangre, index=tipos_sangre.index(current_tipo_sangre))
+                if update_button:
+                    # Validar si algo cambió
+                    if (nombre == beneficiario_data.get('nombre', '') and
+                        telefono == beneficiario_data.get('telefono', '') and
+                        direccion == beneficiario_data.get('direccion', '')):
+                        st.warning("No hay cambios para actualizar.")
+                        return
 
-                        submit_update = st.form_submit_button("Actualizar Información")
-                        if submit_update:
+                    # Actualizar los datos en Supabase
+                    update_data = {
+                        "nombre": nombre,
+                        "telefono": telefono,
+                        "direccion": direccion,
+                    }
+                    update_response = supabase_client.table("beneficiario").update(update_data).eq("id_beneficiario", user_db_id).execute()
+
+                    if update_response.data:
+                        st.success("¡Perfil actualizado con éxito!")
+                        st.balloons()
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error(f"Error al actualizar el perfil: {update_response.error.message}")
+                        st.warning("Detalles técnicos: " + str(update_response.error))
+
+        else:
+            st.warning("No se pudieron cargar los datos de tu perfil. Intenta nuevamente.")
+            if st.button("Recargar Perfil"):
+                st.rerun()
+            return
+
+    except Exception as e:
+        st.error(f"Error al cargar/actualizar los datos del perfil: {e}")
+        st.exception(e)
+        st.warning("Asegúrate de que la conexión a Supabase esté activa y las RLS permitan la lectura/escritura de tu perfil.")
+
+
+def crear_campana_tab():
+    st.header("💉 Crear Nueva Campaña de Donación")
+    st.markdown("---")
+
+    user_db_id = st.session_state.get('user_db_id')
+
+    if not user_db_id:
+        st.warning("No se encontró el ID de beneficiario en la sesión. Por favor, reinicia la sesión.")
+        return
+
+    with st.form("nueva_campana_form", clear_on_submit=True):
+        st.markdown("Completa los siguientes datos para solicitar una donación de sangre.")
+
+        nombre_campana = st.text_input("Nombre de la Campaña", help="Un título para tu solicitud de donación, ej: 'Urgente para Juan Pérez'.")
+        descripcion = st.text_area("📝 Descripción Detallada", help="Ej: 'Se necesita sangre para operación de emergencia en Hospital Central.', 'Para paciente con anemia crónica, se agradecerá cualquier tipo de sangre.'.")
+        
+        today = date.today()
+        
+        fecha_inicio_display = st.date_input("🗓️ Fecha de Inicio (automática)", value=today, disabled=True)
+        fecha_fin = st.date_input("🗓️ Fecha Límite para la Donación", min_value=today, value=today, help="Fecha hasta la cual necesitas la donación.")
+        
+        ubicacion = st.text_input("📍 Ubicación de la Donación", help="Ej: 'Hospital Central, Sala 3', 'Clínica San Martín'.")
+        
+        try:
+            beneficiario_response = supabase_client.table("beneficiario").select("tipo_de_sangre").eq("id_beneficiario", user_db_id).limit(1).execute()
+            if beneficiario_response.data:
+                tipo_sangre_beneficiario = beneficiario_response.data[0]['tipo_de_sangre']
+                st.info(f"Tu tipo de sangre registrado es: **{tipo_sangre_beneficiario}**. Esto se asociará a la campaña.")
+            else:
+                st.warning("No se pudo obtener tu tipo de sangre registrado.")
+                tipo_sangre_beneficiario = None
+        except Exception as e:
+            st.error(f"Error al obtener el tipo de sangre del beneficiario: {e}")
+            tipo_sangre_beneficiario = None
+            
+        
+        submit_button = st.form_submit_button("Crear Campaña")
+
+        if submit_button:
+            if not nombre_campana or not descripcion or not ubicacion:
+                st.error("Por favor, completa todos los campos obligatorios: Nombre de la Campaña, Descripción y Ubicación.")
+            elif fecha_fin < fecha_inicio_display:
+                st.error("La fecha límite no puede ser anterior a la fecha de inicio.")
+            else:
+                try:
+                    data_to_insert = {
+                        "nombre_campana": nombre_campana,
+                        "descripcion": descripcion,
+                        "fecha_inicio": str(fecha_inicio_display),
+                        "fecha_fin": str(fecha_fin),
+                        "ubicacion": ubicacion,
+                        "id_beneficiario": user_db_id,
+                        "estado_campana": "En curso"
+                    }
+
+                    insert_response = supabase_client.table("campaña").insert(data_to_insert).execute()
+
+                    if insert_response.data:
+                        st.success(f"¡Campaña '{nombre_campana}' creada exitosamente!")
+                        st.balloons()
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error(f"Error al crear la campaña: {insert_response.error.message}")
+                        st.warning("Detalles técnicos: " + str(insert_response.error))
+
+                except Exception as e:
+                    st.error(f"Error al conectar con Supabase para crear campaña: {e}")
+                    st.exception(e)
+
+
+def mis_campanas_tab():
+    st.header("📣 Mis Campañas Actuales")
+    st.markdown("---")
+
+    user_db_id = st.session_state.get('user_db_id')
+
+    if not user_db_id:
+        st.warning("No se encontró el ID de beneficiario en la sesión. Por favor, reinicia la sesión.")
+        return
+
+    try:
+        campanas_response = supabase_client.table("campaña").select("*").eq("id_beneficiario", user_db_id).order("fecha_fin", desc=False).execute()
+
+        if campanas_response.data:
+            st.subheader("Campañas Pendientes/En Curso:")
+            found_active = False
+            for campana in campanas_response.data:
+                estado_lower = campana.get('estado_campana', '').lower()
+                if estado_lower in ['en curso', 'próxima', 'activa']:
+                    found_active = True
+                    with st.container(border=True):
+                        st.markdown(f"#### {campana.get('nombre_campana', 'Campaña sin nombre')}")
+                        st.write(f"**Descripción:** {campana.get('descripcion', 'N/A')}")
+                        st.write(f"**Fecha Inicio:** {campana.get('fecha_inicio', 'N/A')}")
+                        st.write(f"**Fecha Límite:** {campana.get('fecha_fin', 'N/A')}")
+                        st.write(f"**Ubicación:** {campana.get('ubicacion', 'N/A')}")
+                        st.write(f"**Estado:** `{campana.get('estado_campana', 'N/A')}`")
+
+                        # ASUMIENDO que la columna de ID en tu tabla 'campaña' se llama 'id_campana'
+                        # SI SE LLAMA DIFERENTE, CÁMBIALO AQUÍ: campana['EL_NOMBRE_DE_TU_COLUMNA_ID']
+                        if st.button(f"Finalizar Campaña", key=f"finalizar_{campana['id_campana']}"): # <<--- CAMBIO AQUÍ
                             try:
-                                update_data = {
-                                    "nombre": updated_nombre,
-                                    "telefono": updated_telefono,
-                                    "direccion": updated_direccion,
-                                    "tipo_de_sangre": updated_tipo_sangre
-                                }
-                                update_response = supabase_client.table("beneficiario").update(update_data).eq("id_beneficiario", user_db_id).execute()
+                                # Y también aquí en la consulta de actualización
+                                update_response = supabase_client.table("campaña").update({"estado_campana": "Finalizada"}).eq("id_campana", campana['id_campana']).execute() # <<--- CAMBIO AQUÍ
                                 if update_response.data:
-                                    st.success("¡Perfil actualizado exitosamente! Los cambios se reflejarán al recargar la página.")
+                                    st.success(f"Campaña '{campana.get('nombre_campana', '')}' finalizada con éxito.")
+                                    time.sleep(1)
                                     st.rerun()
                                 else:
-                                    st.error(f"❌ Error al actualizar el perfil: {update_response.status_code} - {update_response.data}")
-                                    st.json(update_response.data)
-                            except Exception as ex:
-                                st.error(f"❌ Error al conectar con Supabase para actualizar el perfil: {ex}")
-                                st.exception(ex)
-                else:
-                    st.warning(f"⚠️ No se encontraron datos para este beneficiario con ID: **{user_db_id}**. Por favor, verifica que este ID exista en la tabla 'beneficiario' en Supabase y que el email '{user_email}' esté asociado correctamente.")
-            except Exception as e:
-                st.error(f"❌ ERROR al cargar la información del beneficiario desde Supabase. Detalles técnicos: {e}")
-                st.exception(e)
-        else:
-            st.warning("⚠️ Supabase no está conectado. No se puede mostrar/actualizar el perfil.")
-
-    with tab2:
-        st.header("Mis Campañas de Donación")
-        if supabase_client:
-            try:
-                campaigns_response = supabase_client.table("solicitudes_sangre").select("*").eq("id_beneficiario", user_db_id).order("fecha_limite", desc=False).execute()
-                
-                if campaigns_response.data:
-                    st.success(f"✅ Se encontraron {len(campaigns_response.data)} campañas asociadas a tu perfil.")
-                    for i, campaign in enumerate(campaigns_response.data):
-                        st.markdown(f"#### Campaña #{i+1}: {campaign.get('titulo_campania', 'Sin título')}")
-                        st.write(f"**Tipo de Sangre Necesario:** {campaign.get('tipo_sangre_requerido', 'N/A')}")
-                        st.write(f"**Cantidad Requerida:** {campaign.get('cantidad_unidades', 'N/A')} unidades")
-                        st.write(f"**Fecha Límite:** {campaign.get('fecha_limite', 'N/A')}")
-                        st.write(f"**Descripción:** {campaign.get('descripcion', 'N/A')}")
-                        st.write(f"**Estado:** {campaign.get('estado', 'Activa')}")
+                                    st.error(f"Error al finalizar la campaña: {update_response.error.message}")
+                                    st.warning("Detalles técnicos: " + str(update_response.error))
+                            except Exception as e:
+                                st.error(f"Error al conectar con Supabase para finalizar campaña: {e}")
+                                st.exception(e)
                         st.markdown("---")
-                else:
-                    st.info("ℹ️ Aún no tienes campañas de donación asociadas. ¡Crea una en la siguiente pestaña!")
-            except Exception as e:
-                st.error(f"❌ ERROR al cargar tus campañas de donación. Detalles técnicos: {e}")
-                st.exception(e)
+            if not found_active:
+                st.info("No tienes campañas activas o próximas en este momento.")
+
+            st.subheader("Campañas Finalizadas:")
+            found_finished = False
+            for campana in campanas_response.data:
+                if campana.get('estado_campana', '').lower() == 'finalizada':
+                    found_finished = True
+                    with st.expander(f"Campaña '{campana.get('nombre_campana', 'Sin nombre')}' - Finalizada"):
+                        st.write(f"**Descripción:** {campana.get('descripcion', 'N/A')}")
+                        st.write(f"**Fecha Inicio:** {campana.get('fecha_inicio', 'N/A')}")
+                        st.write(f"**Fecha Límite:** {campana.get('fecha_fin', 'N/A')}")
+                        st.write(f"**Ubicación:** {campana.get('ubicacion', 'N/A')}")
+                        st.write(f"**Estado:** `{campana.get('estado_campana', 'N/A')}`")
+            if not found_finished:
+                st.info("No tienes campañas finalizadas.")
+
+
         else:
-            st.warning("⚠️ Supabase no está conectado. No se pueden cargar las campañas.")
+            st.info("Aún no has creado ninguna campaña de donación. ¡Anímate a crear una!")
 
+    except Exception as e:
+        st.error(f"Error al cargar tus campañas: {e}")
+        st.exception(e)
+        st.warning("Asegúrate de que la tabla 'campaña' exista y las RLS permitan la lectura.")
+
+
+def beneficiario_perfil_page():
+    st.title("👤 Panel de Beneficiario")
+    st.markdown("---")
+
+    if not st.session_state.get('logged_in') or st.session_state.get('user_type') != 'Beneficiario':
+        st.warning("Debes iniciar sesión como Beneficiario para acceder a esta página.")
+        st.stop()
+
+    tab1, tab2, tab3 = st.tabs(["Mi Perfil", "Crear Campaña", "Mis Campañas"])
+
+    with tab1:
+        perfil_beneficiario_tab()
+    with tab2:
+        crear_campana_tab()
     with tab3:
-        st.header("Crear Nueva Campaña de Donación")
-        st.write("Completa los detalles para crear una nueva solicitud de donación de sangre.")
+        mis_campanas_tab()
 
-        with st.form("new_campaign_form"):
-            campaign_title = st.text_input("Título de la Campaña", help="Ej: 'Urgencia de Sangre O+ para [Nombre del Paciente]'")
-            required_blood_type = st.selectbox("Tipo de Sangre Necesario", tipos_sangre)
-            required_units = st.number_input("Cantidad de Unidades Requeridas", min_value=1, max_value=100, value=1, help="¿Cuántas unidades de sangre necesitas?")
-            due_date = st.date_input("Fecha Límite para la Donación", help="¿Hasta cuándo necesitas las donaciones?")
-            description = st.text_area("Descripción de la Campaña", help="Proporciona detalles importantes, como la situación, el hospital, etc.")
-
-            create_campaign_button = st.form_submit_button("Crear Campaña")
-
-            if create_campaign_button:
-                if not all([campaign_title, required_blood_type, required_units, due_date, description]):
-                    st.error("⚠️ Por favor, completa todos los campos para crear la campaña.")
-                elif supabase_client:
-                    try:
-                        data_to_insert = {
-                            "id_beneficiario": user_db_id,
-                            "titulo_campania": campaign_title,
-                            "tipo_sangre_requerido": required_blood_type,
-                            "cantidad_unidades": required_units,
-                            "fecha_limite": str(due_date),
-                            "descripcion": description,
-                            "estado": "Activa"
-                        }
-                        insert_response = supabase_client.table("solicitudes_sangre").insert(data_to_insert).execute()
-                        
-                        if insert_response.data:
-                            st.success("🎉 ¡Campaña de donación creada exitosamente! La verás en 'Mis Campañas'.")
-                            st.balloons()
-                            # Puedes limpiar el formulario o forzar un refresh de la pestaña de campañas si lo deseas
-                        else:
-                            st.error(f"❌ Error al crear la campaña: {insert_response.status_code} - {insert_response.data}")
-                            st.json(insert_response.data)
-                    except Exception as e:
-                        st.error(f"❌ ERROR al conectar con Supabase para crear campaña. Detalles técnicos: {e}")
-                        st.exception(e)
-                else:
-                    st.warning("⚠️ Supabase no está conectado. No se pudo crear la campaña.")
+if __name__ == "__main__":
+    beneficiario_perfil_page()
