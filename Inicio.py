@@ -4,19 +4,17 @@ import os
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
-# Ya no necesitamos importar las páginas directamente aquí si el mecanismo de multipágina
-# de Streamlit se encarga de ello. Si las mantienes, solo se usarán si las llamas explícitamente.
-# Para la estructura de "pages/" no es necesario.
-# import pages.donante1 as donante_page
-# import pages.beneficiario as beneficiario_page
-# import pages.hospital as hospital_page
+# --- Importar las páginas de los roles (AHORA SI ES NECESARIO IMPORTARLAS AQUÍ) ---
+import pages.donante1 as donante_page
+import pages.beneficiario as beneficiario_page # Importamos explícitamente
+import pages.hospital as hospital_page
 
 # --- Configuración de la página de Streamlit ---
 st.set_page_config(
     page_title="Plataforma de Donación de Sangre",
     page_icon="🩸",
-    layout="centered", # O "wide" si prefieres más espacio
-    initial_sidebar_state="auto" # Esto hace que Streamlit detecte automáticamente los archivos en 'pages/'
+    layout="centered", # Puedes cambiar a "wide" si prefieres más espacio
+    initial_sidebar_state="collapsed" # Lo ponemos colapsado para que el main.py controle la navegación
 )
 
 # Carga las variables de entorno desde el archivo .env
@@ -26,17 +24,19 @@ load_dotenv()
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
-supabase_client: Client = None
+supabase_client: Client = None # Inicializarlo antes del bloque if/else
 
 if not SUPABASE_URL or not SUPABASE_KEY:
-    st.error("Advertencia: Las variables de entorno SUPABASE_URL y SUPABASE_KEY no están configuradas en el .env.")
+    st.error("❌ Advertencia: Las variables de entorno SUPABASE_URL y SUPABASE_KEY no están configuradas en el .env.")
     st.info("Por favor, confíguralas para que la conexión a la base de datos funcione.")
 else:
     try:
         supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        # st.success("✅ Conexión a Supabase establecida en main.py.") # Mensaje de depuración
     except Exception as e:
-        st.error(f"Error al inicializar cliente Supabase: {e}")
-        supabase_client = None
+        st.error(f"❌ Error al inicializar cliente Supabase en main.py: {e}")
+        st.info("Verifica tu URL y Key de Supabase. Podría ser un problema de red o credenciales.")
+        supabase_client = None # Asegurar que sea None si falla la conexión
 
 # --- Funciones de autenticación y registro (SE MANTIENEN IGUAL) ---
 def verificar_credenciales_desde_db(email, password, user_type):
@@ -49,19 +49,18 @@ def verificar_credenciales_desde_db(email, password, user_type):
 
     if user_type == "Donante":
         tabla = "donante"
-        id_columna_db = "ID_Donante" 
+        id_columna_db = "ID_Donante"
     elif user_type == "Beneficiario":
         tabla = "beneficiario"
-        id_columna_db = "id_beneficiario"
+        id_columna_db = "id_beneficiario" # ¡CRÍTICO: Asegúrate de que este nombre coincida EXACTAMENTE con tu DB!
     elif user_type == "Hospital":
         tabla = "hospital"
-        id_columna_db = "id_hospital" 
+        id_columna_db = "id_hospital"
     else:
         st.error("Tipo de usuario no válido.")
         return False, None, None
 
     try:
-        # Aquí también seleccionamos el ID para asegurarnos de que lo obtenemos
         response = supabase_client.table(tabla).select(f"*, contrafija, {id_columna_db}").eq("mail", email).limit(1).execute()
         
         if response.data:
@@ -81,7 +80,7 @@ def verificar_credenciales_desde_db(email, password, user_type):
             return False, None, None
     except Exception as e:
         st.error(f"Error al verificar credenciales en Supabase: {e}")
-        st.exception(e)
+        st.exception(e) # Mostrar el traceback del error para depuración
         return False, None, None
 
 def registrar_donante_en_db(nombre, dni, mail, telefono, direccion, tipo_sangre, edad, sexo, antecedentes, medicaciones, contrafija):
@@ -178,43 +177,71 @@ if 'user_db_id' not in st.session_state:
     st.session_state['user_db_id'] = None
 if 'show_register_form' not in st.session_state:
     st.session_state['show_register_form'] = False
-# Nuevo: para controlar la página actual (si no usas la detección automática de pages/)
-if 'current_page' not in st.session_state:
-    st.session_state['current_page'] = 'home' # Página predeterminada
 
+# --- Control de la página actual ---
+if 'current_page' not in st.session_state:
+    st.session_state['current_page'] = 'login' # La página inicial es el login
 
 # --- Lógica principal de la aplicación ---
 if st.session_state['logged_in']:
-    st.sidebar.button("Cerrar Sesión", on_click=lambda: st.session_state.update({'logged_in': False, 'user_type': None, 'user_email': None, 'user_db_id': None, 'show_register_form': False, 'current_page': 'home'}))
-    st.sidebar.success(f"Sesión iniciada como: **{st.session_state['user_type']}**")
+    # Mostrar el sidebar con opciones de navegación y cerrar sesión
+    with st.sidebar:
+        st.success(f"Sesión iniciada como: **{st.session_state['user_type']}**")
+        st.markdown("### Navegación")
+        
+        # Opciones de menú según el tipo de usuario
+        if st.session_state['user_type'] == 'Donante':
+            page_options = ["Mi Perfil (Donante)", "Historial de Donaciones", "Programar Donación"]
+            selected_page = st.radio("Ir a:", page_options, key="donante_nav")
+            if selected_page == "Mi Perfil (Donante)":
+                st.session_state['current_page'] = 'donante_perfil'
+            # Agrega más condiciones para otras opciones del donante
+            
+        elif st.session_state['user_type'] == 'Beneficiario':
+            page_options = ["Mi Perfil (Beneficiario)", "Mis Campañas", "Crear Campaña"]
+            selected_page = st.radio("Ir a:", page_options, key="beneficiario_nav")
+            if selected_page == "Mi Perfil (Beneficiario)":
+                st.session_state['current_page'] = 'beneficiario_perfil'
+            elif selected_page == "Mis Campañas":
+                st.session_state['current_page'] = 'beneficiario_mis_campanas'
+            elif selected_page == "Crear Campaña":
+                st.session_state['current_page'] = 'beneficiario_crear_campana'
+
+        elif st.session_state['user_type'] == 'Hospital':
+            page_options = ["Mi Perfil (Hospital)", "Gestión de Stock", "Ver Solicitudes"]
+            selected_page = st.radio("Ir a:", page_options, key="hospital_nav")
+            if selected_page == "Mi Perfil (Hospital)":
+                st.session_state['current_page'] = 'hospital_perfil'
+            # Agrega más condiciones para otras opciones del hospital
+        
+        st.markdown("---")
+        if st.button("Cerrar Sesión", key="logout_button"):
+            st.session_state.update({'logged_in': False, 'user_type': None, 'user_email': None, 'user_db_id': None, 'show_register_form': False, 'current_page': 'login'})
+            st.rerun()
+
+    # --- Renderizado de la página según el estado ---
+    if st.session_state['current_page'] == 'donante_perfil':
+        donante_page.donante_perfil()
+    # Aquí puedes añadir más elif para otras sub-secciones del donante si las tuvieras
     
-    # Después de iniciar sesión, el main.py no debe renderizar el contenido de las páginas de los roles directamente.
-    # Streamlit se encarga de eso a través del sidebar si los archivos están en la carpeta 'pages/'.
-    # Puedes dejar un mensaje de bienvenida general aquí si quieres, o dejarlo vacío.
-    st.markdown(f"<h1 style='text-align: center; color: #B22222;'>¡Bienvenido, {st.session_state['user_email']}!</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; font-size: 1.2em;'>Selecciona una opción del menú lateral.</p>", unsafe_allow_html=True)
+    elif st.session_state['current_page'] == 'beneficiario_perfil' or st.session_state['current_page'] == 'beneficiario_mis_campanas' or st.session_state['current_page'] == 'beneficiario_crear_campana':
+        # La función beneficiario_perfil() ya maneja las pestañas internas
+        # Así que la llamamos una vez y ella se encarga de mostrar las pestañas
+        beneficiario_page.beneficiario_perfil(initial_tab=st.session_state['current_page']) # Le pasamos la pestaña inicial
+    
+    elif st.session_state['current_page'] == 'hospital_perfil':
+        hospital_page.hospital_perfil()
+    # Aquí puedes añadir más elif para otras sub-secciones del hospital
+    
+    else:
+        # Página de bienvenida o por defecto cuando se loguea
+        st.markdown(f"<h1 style='text-align: center; color: #B22222;'>¡Bienvenido, {st.session_state['user_email']}!</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; font-size: 1.2em;'>Por favor, selecciona una opción del menú lateral para comenzar.</p>", unsafe_allow_html=True)
 
-    # Si tu estructura de páginas con st.sidebar no funciona por algún motivo,
-    # y quieres un manejo explícito de páginas, DESCOMENTA LO SIGUIENTE y COMENTA lo de arriba:
-    # if st.session_state['user_type'] == 'Donante':
-    #     st.session_state['current_page'] = 'donante'
-    # elif st.session_state['user_type'] == 'Beneficiario':
-    #     st.session_state['current_page'] = 'beneficiario'
-    # elif st.session_state['user_type'] == 'Hospital':
-    #     st.session_state['current_page'] = 'hospital'
-    # st.rerun() # Fuerza una recarga para ir a la página correcta
-
-    # Si usas la detección automática de pages/, no necesitas las llamadas directas:
-    # if st.session_state['user_type'] == 'Donante':
-    #     donante_page.donante_perfil()
-    # elif st.session_state['user_type'] == 'Beneficiario':
-    #     beneficiario_page.beneficiario_perfil()
-    # elif st.session_state['user_type'] == 'Hospital':
-    #     hospital_page.hospital_perfil()
-    # else:
-    #     st.error("Tipo de usuario no reconocido. Por favor, contacta al soporte.")
 
 else: # Si el usuario NO está logueado (mostrar login/registro)
+    st.session_state['current_page'] = 'login' # Aseguramos que la página actual sea login
+    
     st.markdown("<h1 style='text-align: center; color: #B22222;'>🩸 Salva Vidas, Dona Sangre 🩸</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; font-size: 1.2em; color: #333333;'>Una comunidad unida por la vida. Inicia sesión para ser parte.</p>", unsafe_allow_html=True)
     
@@ -241,9 +268,18 @@ else: # Si el usuario NO está logueado (mostrar login/registro)
                         st.session_state['user_type'] = user_type
                         st.session_state['user_email'] = user_email_logueado
                         st.session_state['user_db_id'] = user_db_id
+                        
+                        # Establecer la página inicial del perfil correspondiente después del login
+                        if user_type == 'Donante':
+                            st.session_state['current_page'] = 'donante_perfil'
+                        elif user_type == 'Beneficiario':
+                            st.session_state['current_page'] = 'beneficiario_perfil'
+                        elif user_type == 'Hospital':
+                            st.session_state['current_page'] = 'hospital_perfil'
+                        
                         st.success(f"¡Bienvenido, {user_email_logueado}! Sesión iniciada como {user_type}.")
-                        time.sleep(1)
-                        st.rerun() # Esto recarga la página, mostrando el contenido para usuarios logueados
+                        time.sleep(1) # Pequeña pausa para que el usuario vea el mensaje de éxito
+                        st.rerun() # Esto recarga la página y va a la sección del usuario logueado
 
             st.markdown("---")
             if st.button("¿No tenés cuenta? ¡Registrate!"):
