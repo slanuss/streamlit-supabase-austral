@@ -16,12 +16,14 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 else:
     try:
         supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        # st.success("✅ Conexión a Supabase establecida en beneficiario.py.") # Mensaje de depuración
     except Exception as e:
         st.error(f"❌ ERROR CRÍTICO al inicializar cliente Supabase en beneficiario.py: {e}")
         st.info("Verifica tu URL y Key de Supabase. Podría ser un problema de red o credenciales.")
         supabase_client = None
 
-def beneficiario_perfil():
+# Modificamos la función para aceptar una pestaña inicial
+def beneficiario_perfil(initial_tab=None):
     st.markdown("<h2 style='text-align: center; color: #B22222;'>Bienvenido a tu Perfil de Beneficiario</h2>", unsafe_allow_html=True)
     st.write("Aquí puedes gestionar tus solicitudes de donación y ver tu información.")
 
@@ -38,9 +40,17 @@ def beneficiario_perfil():
     
     st.success(f"✅ Sesión de beneficiario activa: Email='{user_email}', ID de Beneficiario='{user_db_id}'")
 
-    st.subheader(f"Hola, {user_email}!")
+    st.subheader(f"Hola, {beneficiario_data.get('nombre', 'Usuario') if 'beneficiario_data' in locals() else user_email}!") # Intenta mostrar el nombre si ya se cargó, sino el email
 
-    tab1, tab2, tab3 = st.tabs(["📊 Mi Perfil", "💉 Mis Campañas de Donación", "✨ Crear Nueva Campaña"])
+    # Mapeo de initial_tab a índice de la pestaña
+    tab_titles = ["📊 Mi Perfil", "💉 Mis Campañas de Donación", "✨ Crear Nueva Campaña"]
+    initial_tab_index = 0 # Por defecto, la primera pestaña
+    if initial_tab == 'beneficiario_mis_campanas':
+        initial_tab_index = 1
+    elif initial_tab == 'beneficiario_crear_campana':
+        initial_tab_index = 2
+
+    tab1, tab2, tab3 = st.tabs(tab_titles, initial_tab=initial_tab_index) # Usamos initial_tab aquí
 
     tipos_sangre = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
 
@@ -48,11 +58,10 @@ def beneficiario_perfil():
         st.header("Información de tu Perfil")
         if supabase_client:
             try:
-                # La columna de ID para beneficiario es 'id_beneficiario' según tus capturas
                 response = supabase_client.table("beneficiario").select("*").eq("id_beneficiario", user_db_id).limit(1).execute()
                 
                 if response.data:
-                    beneficiario_data = response.data[0]
+                    beneficiario_data = response.data[0] # Almacena los datos del beneficiario aquí
                     st.write(f"**Nombre:** {beneficiario_data.get('nombre', 'N/A')}")
                     st.write(f"**Email:** {beneficiario_data.get('mail', 'N/A')}")
                     st.write(f"**Teléfono:** {beneficiario_data.get('telefono', 'N/A')}")
@@ -95,7 +104,7 @@ def beneficiario_perfil():
                     st.warning(f"⚠️ No se encontraron datos para este beneficiario con ID: **{user_db_id}**. Por favor, verifica que este ID exista en la tabla 'beneficiario' en Supabase y que el email '{user_email}' esté asociado correctamente.")
             except Exception as e:
                 st.error(f"❌ ERROR al cargar la información del beneficiario desde Supabase. Detalles técnicos: {e}")
-                st.exception(e) # Esto mostrará el error completo para depuración
+                st.exception(e)
         else:
             st.warning("⚠️ Supabase no está conectado. No se puede mostrar/actualizar el perfil.")
 
@@ -103,7 +112,6 @@ def beneficiario_perfil():
         st.header("Mis Campañas de Donación")
         if supabase_client:
             try:
-                # CRÍTICO: Asegúrate de que tu tabla se llama 'solicitudes_sangre' y la FK 'id_beneficiario'
                 campaigns_response = supabase_client.table("solicitudes_sangre").select("*").eq("id_beneficiario", user_db_id).order("fecha_limite", desc=False).execute()
                 
                 if campaigns_response.data:
