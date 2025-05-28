@@ -1,351 +1,158 @@
+# pages/beneficiario.py
 import streamlit as st
-import time
+from supabase import create_client, Client
 import os
 from dotenv import load_dotenv
-from supabase import create_client, Client
 
-# Importar las páginas de los roles
-import pages.donante1 as donante_page
-import pages.beneficiario as beneficiario_page # Asegúrate de que este archivo exista en 'pages' y esté descomentado
-import pages.hospital as hospital_page
-
-# --- Configuración de la página de Streamlit ---
-st.set_page_config(
-    page_title="Plataforma de Donación de Sangre",
-    page_icon="🩸",
-    layout="centered",
-    initial_sidebar_state="auto"
-)
-
-# Carga las variables de entorno desde el archivo .env
+# Carga las variables de entorno para Supabase (esto es importante si corres esta página independientemente)
 load_dotenv()
-
-# --- Configuración de Supabase ---
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
-if not SUPABASE_URL or not SUPABASE_KEY:
-    st.error("Advertencia: Las variables de entorno SUPABASE_URL y SUPABASE_KEY no están configuradas en el .env.")
-    st.info("Por favor, confíguralas para que la conexión a la base de datos funcione.")
-    supabase_client: Client = None
+supabase_client: Client = None
+if SUPABASE_URL and SUPABASE_KEY:
+    try:
+        supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception as e:
+        st.error(f"Error al inicializar cliente Supabase en beneficiario.py: {e}")
 else:
-    try:
-        supabase_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-    except Exception as e:
-        st.error(f"Error al inicializar cliente Supabase: {e}")
-        supabase_client: Client = None
+    st.error("Las variables de entorno SUPABASE_URL y SUPABASE_KEY no están configuradas en el .env.")
 
-# --- Funciones de autenticación y registro ---
-def verificar_credenciales_desde_db(email, password, user_type):
-    """
-    Verifica las credenciales de usuario contra tus tablas 'donante', 'beneficiario' o 'hospital' en Supabase.
-    ADVERTENCIA: ESTO NO ES SEGURO PARA PRODUCCIÓN. LAS CONTRASEÑAS DEBEN ESTAR HASEADAS.
-    """
-    if supabase_client is None:
-        st.error("Conexión a Supabase no disponible. No se puede verificar credenciales.")
-        return False, None, None
+def beneficiario_perfil():
+    st.markdown("<h2 style='text-align: center; color: #B22222;'>Bienvenido a tu Perfil de Beneficiario</h2>", unsafe_allow_html=True)
+    st.write("Aquí puedes gestionar tus solicitudes de donación y ver tu información.")
 
-    tabla = None
-    id_columna_db = None
+    user_email = st.session_state.get('user_email')
+    user_db_id = st.session_state.get('user_db_id')
 
-    if user_type == "Donante":
-        tabla = "donante"
-        id_columna_db = "ID_Donante" # Asume que esta es la columna de ID en tu tabla donante
-    elif user_type == "Beneficiario":
-        tabla = "beneficiario"
-        id_columna_db = "id_beneficio" # ¡CORREGIDO: Nombre de la columna de ID en tu tabla 'beneficiario' en Supabase!
-    elif user_type == "Hospital":
-        tabla = "hospital"
-        id_columna_db = "id_hospital" # Asume que esta es la columna de ID en tu tabla hospital
-    else:
-        st.error("Tipo de usuario no válido.")
-        return False, None, None
+    if not user_email or not user_db_id:
+        st.warning("No se pudo cargar la información del usuario. Por favor, inicia sesión de nuevo.")
+        return
 
-    try:
-        response = supabase_client.table(tabla).select("*, contrafija").eq("mail", email).limit(1).execute()
-        
-        if response.data:
-            usuario_db = response.data[0]
-            
-            if usuario_db.get("contrafija") == password:
-                user_db_id = usuario_db.get(id_columna_db)
-                if user_db_id is None:
-                    st.warning(f"No se encontró la columna de ID '{id_columna_db}' en la tabla '{tabla}' para el usuario {email}. La aplicación podría no funcionar correctamente para funcionalidades que requieran el ID.")
-                    return False, None, None
-                return True, email, user_db_id
-            else:
-                st.warning("Contraseña incorrecta. Por favor, verifica tu contraseña.")
-                return False, None, None
+    st.subheader(f"Hola, {user_email}!")
+
+    tab1, tab2, tab3 = st.tabs(["📊 Mi Perfil", "💉 Mis Campañas de Donación", "✨ Crear Nueva Campaña"])
+
+    with tab1:
+        st.header("Información de tu Perfil")
+        if supabase_client:
+            try:
+                response = supabase_client.table("beneficiario").select("*").eq("id_beneficiario", user_db_id).limit(1).execute()
+                if response.data:
+                    beneficiario_data = response.data[0]
+                    st.write(f"**Nombre:** {beneficiario_data.get('nombre', 'N/A')}")
+                    st.write(f"**Email:** {beneficiario_data.get('mail', 'N/A')}")
+                    st.write(f"**Teléfono:** {beneficiario_data.get('telefono', 'N/A')}")
+                    st.write(f"**Dirección:** {beneficiario_data.get('direccion', 'N/A')}")
+                    st.write(f"**Tipo de Sangre Requerido:** {beneficiario_data.get('tipo_de_sangre', 'N/A')}")
+                    
+                    # Opcional: Permitir editar el perfil
+                    st.markdown("---")
+                    st.subheader("Actualizar Perfil")
+                    with st.form("update_beneficiario_profile"):
+                        updated_nombre = st.text_input("Nombre", value=beneficiario_data.get('nombre', ''))
+                        updated_telefono = st.text_input("Teléfono", value=beneficiario_data.get('telefono', ''))
+                        updated_direccion = st.text_input("Dirección", value=beneficiario_data.get('direccion', ''))
+                        
+                        tipos_sangre = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
+                        updated_tipo_sangre = st.selectbox("Tipo de Sangre Requerido", tipos_sangre, index=tipos_sangre.index(beneficiario_data.get('tipo_de_sangre', 'O+')))
+
+                        submit_update = st.form_submit_button("Actualizar Información")
+                        if submit_update:
+                            try:
+                                update_data = {
+                                    "nombre": updated_nombre,
+                                    "telefono": updated_telefono,
+                                    "direccion": updated_direccion,
+                                    "tipo_de_sangre": updated_tipo_sangre
+                                }
+                                update_response = supabase_client.table("beneficiario").update(update_data).eq("id_beneficiario", user_db_id).execute()
+                                if update_response.data:
+                                    st.success("¡Perfil actualizado exitosamente!")
+                                    st.rerun() # Recarga para mostrar los datos actualizados
+                                else:
+                                    st.error(f"Error al actualizar el perfil: {update_response.status_code} - {update_response.data}")
+                            except Exception as ex:
+                                st.error(f"Error al conectar con Supabase para actualizar: {ex}")
+
+                else:
+                    st.warning("No se encontraron datos para este beneficiario.")
+            except Exception as e:
+                st.error(f"Error al cargar la información del beneficiario desde Supabase: {e}")
         else:
-            st.error(f"El email '{email}' no se encontró en la tabla de {user_type}.")
-            return False, None, None
-    except Exception as e:
-        st.error(f"Error al verificar credenciales en Supabase: {e}")
-        return False, None, None
+            st.warning("Supabase no está conectado para cargar la información del perfil.")
 
-def registrar_donante_en_db(nombre, dni, mail, telefono, direccion, tipo_sangre, edad, sexo, antecedentes, medicaciones, contrafija):
-    """
-    Registra un nuevo donante en la tabla 'donante' de Supabase.
-    """
-    if supabase_client is None:
-        st.error("Conexión a Supabase no disponible. No se puede registrar.")
-        return False
-
-    try:
-        existing_dni = supabase_client.table("donante").select("dni").eq("dni", dni).execute()
-        if existing_dni.data:
-            st.error("El DNI ya está registrado. Por favor, verifica tus datos o inicia sesión.")
-            return False
-        
-        existing_mail = supabase_client.table("donante").select("mail").eq("mail", mail).execute()
-        if existing_mail.data:
-            st.error("El email ya está registrado. Por favor, verifica tus datos o inicia sesión.")
-            return False
-
-        data = {
-            "nombre": nombre,
-            "dni": dni,
-            "mail": mail,
-            "telefono": telefono,
-            "direccion": direccion,
-            "tipo_de_sangre": tipo_sangre,
-            "edad": edad,
-            "sexo": sexo,
-            "antecedentes": antecedentes,
-            "medicaciones": medicaciones,
-            "contrafija": contrafija
-        }
-        response = supabase_client.table("donante").insert(data).execute()
-        if response.data:
-            st.success("¡Registro de donante exitoso! Ahora puedes iniciar sesión.")
-            return True
-        else:
-            st.error(f"Error al registrar donante: {response.status_code} - {response.data}")
-            return False
-    except Exception as e:
-        st.error(f"Error al registrar donante en Supabase: {e}")
-        return False
-
-def registrar_beneficiario_en_db(nombre, mail, telefono, direccion, tipo_sangre, contrafija):
-    """
-    Registra un nuevo beneficiario en la tabla 'beneficiario' de Supabase.
-    Basado en las columnas de tus capturas de pantalla: nombre, mail, telefono, direccion, tipo_de_sangre, contrafija.
-    """
-    if supabase_client is None:
-        st.error("Conexión a Supabase no disponible. No se puede registrar.")
-        return False
-
-    try:
-        existing_mail = supabase_client.table("beneficiario").select("mail").eq("mail", mail).execute()
-        if existing_mail.data:
-            st.error("El email ya está registrado. Por favor, verifica tus datos o inicia sesión.")
-            return False
-
-        data = {
-            "nombre": nombre, #
-            "mail": mail, #
-            "telefono": telefono, #
-            "direccion": direccion, #
-            "tipo_de_sangre": tipo_sangre, #
-            "contrafija": contrafija #
-        }
-        response = supabase_client.table("beneficiario").insert(data).execute()
-        if response.data:
-            st.success("¡Registro de beneficiario exitoso! Ahora puedes iniciar sesión.")
-            return True
-        else:
-            st.error(f"Error al registrar beneficiario: {response.status_code} - {response.data}")
-            return False
-    except Exception as e:
-        st.error(f"Error al registrar beneficiario en Supabase: {e}")
-        return False
-
-def registrar_hospital_en_db(nombre_hospital, direccion, telefono, mail, contrafija):
-    """
-    Registra un nuevo hospital en la tabla 'hospital' de Supabase.
-    """
-    if supabase_client is None:
-        st.error("Conexión a Supabase no disponible. No se puede registrar.")
-        return False
-
-    try:
-        existing_mail = supabase_client.table("hospital").select("mail").eq("mail", mail).execute()
-        if existing_mail.data:
-            st.error("El email ya está registrado para un hospital. Por favor, verifica tus datos o inicia sesión.")
-            return False
-        
-        existing_name = supabase_client.table("hospital").select("nombre_hospital").eq("nombre_hospital", nombre_hospital).execute()
-        if existing_name.data:
-            st.error("Ya existe un hospital registrado con ese nombre. Por favor, verifica tus datos.")
-            return False
-
-        data = {
-            "nombre_hospital": nombre_hospital,
-            "direccion": direccion,
-            "telefono": telefono,
-            "mail": mail,
-            "contrafija": contrafija
-        }
-        response = supabase_client.table("hospital").insert(data).execute()
-        if response.data:
-            st.success("¡Registro de hospital exitoso! Ahora puedes iniciar sesión.")
-            return True
-        else:
-            st.error(f"Error al registrar hospital: {response.status_code} - {response.data}")
-            return False
-    except Exception as e:
-        st.error(f"Error al registrar hospital en Supabase: {e}")
-        return False
-
-# --- Inicializa el estado de la sesión ---
-if 'logged_in' not in st.session_state:
-    st.session_state['logged_in'] = False
-if 'user_type' not in st.session_state:
-    st.session_state['user_type'] = None
-if 'user_email' not in st.session_state:
-    st.session_state['user_email'] = None
-if 'user_db_id' not in st.session_state:
-    st.session_state['user_db_id'] = None
-if 'show_register_form' not in st.session_state:
-    st.session_state['show_register_form'] = False
-
-
-# --- Lógica principal de la aplicación ---
-if st.session_state['logged_in']:
-    st.sidebar.button("Cerrar Sesión", on_click=lambda: st.session_state.update({'logged_in': False, 'user_type': None, 'user_email': None, 'user_db_id': None, 'show_register_form': False}))
-    st.sidebar.success(f"Sesión iniciada como: **{st.session_state['user_type']}**")
-    
-    st.markdown(f"<h1 style='text-align: center; color: #B22222;'>¡Bienvenido, {st.session_state['user_email']}!</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; font-size: 1.2em;'>Tu aporte es vital para salvar vidas.</p>", unsafe_allow_html=True)
-    
-    if st.session_state['user_type'] == 'Donante':
-        donante_page.donante_perfil()
-    elif st.session_state['user_type'] == 'Beneficiario':
-        beneficiario_page.beneficiario_perfil() # Llamada a la página del beneficiario
-    elif st.session_state['user_type'] == 'Hospital':
-        hospital_page.hospital_perfil()
-    else:
-        st.error("Tipo de usuario no reconocido. Por favor, contacta al soporte.")
-
-else:
-    st.markdown("<h1 style='text-align: center; color: #B22222;'>🩸 Salva Vidas, Dona Sangre 🩸</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; font-size: 1.2em; color: #333333;'>Una comunidad unida por la vida. Inicia sesión para ser parte.</p>", unsafe_allow_html=True)
-    
-    st.write("---")
-
-    col1, col2, col3 = st.columns([1,2,1]) 
-
-    with col2:
-        if not st.session_state['show_register_form']:
-            with st.form("login_form", clear_on_submit=False):
-                st.subheader("Inicia Sesión Aquí")
-                email = st.text_input("📧 Email de Usuario", help="Debe ser un email existente en tu tabla de Donante/Beneficiario/Hospital en Supabase.")
-                password = st.text_input("🔒 Contraseña", type="password", help="Usa la 'contrafija' de tu tabla de usuario (ej. 'hosp1' para hospital1@email.com).")
-                user_type = st.selectbox("👤 Tipo de Usuario", ["Donante", "Beneficiario", "Hospital"])
+    with tab2:
+        st.header("Mis Campañas de Donación")
+        st.info("Funcionalidad para mostrar campañas asociadas en desarrollo.")
+        if supabase_client:
+            try:
+                # Asumiendo que tienes una tabla 'campanias' o 'solicitudes_sangre'
+                # y que tienen una columna 'id_beneficiario' que las relaciona.
+                # Ajusta el nombre de la tabla y la columna si son diferentes.
+                campaigns_response = supabase_client.table("solicitudes_sangre").select("*").eq("id_beneficiario", user_db_id).execute()
                 
-                st.write("")
-                login_button = st.form_submit_button("Ingresar")
-
-                if login_button:
-                    login_exitoso, user_email_logueado, user_db_id = verificar_credenciales_desde_db(email, password, user_type)
-                    
-                    if login_exitoso:
-                        st.session_state['logged_in'] = True
-                        st.session_state['user_type'] = user_type
-                        st.session_state['user_email'] = user_email_logueado
-                        st.session_state['user_db_id'] = user_db_id
-                        st.success(f"¡Bienvenido, {user_email_logueado}! Sesión iniciada como {user_type}.")
-                        time.sleep(1)
-                        st.rerun()
-                    
-            st.markdown("---")
-            if st.button("¿No tenés cuenta? ¡Registrate!"):
-                st.session_state['show_register_form'] = True
-                st.rerun()
-
+                if campaigns_response.data:
+                    st.write("Aquí están tus campañas de donación:")
+                    for i, campaign in enumerate(campaigns_response.data):
+                        st.markdown(f"#### Campaña #{i+1}: {campaign.get('titulo_campania', 'Sin título')}")
+                        st.write(f"**Tipo de Sangre Necesario:** {campaign.get('tipo_sangre_requerido', 'N/A')}")
+                        st.write(f"**Cantidad Requerida:** {campaign.get('cantidad_unidades', 'N/A')} unidades")
+                        st.write(f"**Fecha Límite:** {campaign.get('fecha_limite', 'N/A')}")
+                        st.write(f"**Descripción:** {campaign.get('descripcion', 'N/A')}")
+                        st.write(f"**Estado:** {campaign.get('estado', 'Activa')}") # Puedes tener estados como 'Activa', 'Completada', 'Cancelada'
+                        st.markdown("---")
+                else:
+                    st.info("Aún no tienes campañas de donación asociadas. ¡Crea una en la siguiente pestaña!")
+            except Exception as e:
+                st.error(f"Error al cargar tus campañas de donación: {e}")
         else:
-            st.subheader("Crea tu Cuenta Nueva")
-            register_user_type = st.selectbox("👤 ¿Qué tipo de cuenta deseas crear?", ["Donante", "Beneficiario", "Hospital"])
-            
-            with st.form("register_form", clear_on_submit=True):
-                new_email = st.text_input("📧 Email", key="reg_email", help="Tu email será tu identificador principal.")
-                new_password = st.text_input("🔒 Contraseña", type="password", key="reg_password")
-                confirm_password = st.text_input("🔄 Confirma Contraseña", type="password", key="reg_confirm_password")
+            st.warning("Supabase no está conectado para cargar las campañas.")
 
-                if register_user_type == "Donante":
-                    st.write("---")
-                    st.markdown("##### Datos del Donante")
-                    new_nombre = st.text_input("Nombre", key="don_nombre")
-                    new_dni = st.text_input("DNI", key="don_dni")
-                    new_telefono = st.text_input("Teléfono", key="don_telefono")
-                    new_direccion = st.text_input("Dirección", key="don_direccion")
-                    
-                    new_edad = st.number_input("Edad", min_value=18, max_value=99, key="don_edad", help="Debes tener al menos 18 años para ser donante.")
-                    new_sexo = st.selectbox("Sexo", ["Masculino", "Femenino", "Otro"], key="don_sexo")
-                    new_antecedentes = st.text_area("Antecedentes Médicos (opcional)", help="Ej: 'Alergia al polen', 'Hipertensión leve'", key="don_antecedentes")
-                    new_medicaciones = st.text_area("Medicaciones Actuales (opcional)", help="Ej: 'Antihistamínicos', 'Losartan'", key="don_medicaciones")
 
-                    tipos_sangre = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
-                    new_tipo_sangre = st.selectbox("Tipo de Sangre", tipos_sangre, key="don_tipo_sangre")
+    with tab3:
+        st.header("Crear Nueva Campaña de Donación")
+        st.write("Completa los detalles para crear una nueva solicitud de donación de sangre.")
 
-                    register_button = st.form_submit_button("Registrar Donante")
-                    if register_button:
-                        if new_password != confirm_password:
-                            st.error("Las contraseñas no coinciden.")
-                        elif not all([new_nombre, new_dni, new_email, new_telefono, new_direccion, new_tipo_sangre, new_edad, new_sexo, new_password]):
-                            st.error("Por favor, completa todos los campos obligatorios (Nombre, DNI, Email, Teléfono, Dirección, Tipo de Sangre, Edad, Sexo, Contraseña).")
+        with st.form("new_campaign_form"):
+            campaign_title = st.text_input("Título de la Campaña", help="Ej: 'Urgencia de Sangre O+ para [Nombre del Paciente]'")
+            required_blood_type = st.selectbox("Tipo de Sangre Necesario", tipos_sangre) # Reutiliza la lista de tipos_sangre
+            required_units = st.number_input("Cantidad de Unidades Requeridas", min_value=1, max_value=100, value=1, help="¿Cuántas unidades de sangre necesitas?")
+            due_date = st.date_input("Fecha Límite para la Donación", help="¿Hasta cuándo necesitas las donaciones?")
+            description = st.text_area("Descripción de la Campaña", help="Proporciona detalles importantes, como la situación, el hospital, etc.")
+
+            create_campaign_button = st.form_submit_button("Crear Campaña")
+
+            if create_campaign_button:
+                if not campaign_title or not required_blood_type or not required_units or not due_date or not description:
+                    st.error("Por favor, completa todos los campos para crear la campaña.")
+                elif supabase_client:
+                    try:
+                        # Asegúrate de que tu tabla 'solicitudes_sangre' o 'campanias'
+                        # tenga las columnas 'id_beneficiario', 'titulo_campania', 'tipo_sangre_requerido',
+                        # 'cantidad_unidades', 'fecha_limite', 'descripcion', 'estado' (opcional, default 'Activa')
+                        data_to_insert = {
+                            "id_beneficiario": user_db_id,
+                            "titulo_campania": campaign_title,
+                            "tipo_sangre_requerido": required_blood_type,
+                            "cantidad_unidades": required_units,
+                            "fecha_limite": str(due_date), # Convertir a string para Supabase
+                            "descripcion": description,
+                            "estado": "Activa" # Estado inicial de la campaña
+                        }
+                        insert_response = supabase_client.table("solicitudes_sangre").insert(data_to_insert).execute()
+                        if insert_response.data:
+                            st.success("¡Campaña de donación creada exitosamente!")
+                            st.balloons() # Pequeña celebración
+                            # Opcional: recargar la pestaña de campañas para que aparezca la nueva
+                            st.session_state['refresh_campaigns'] = True 
+                            st.rerun()
                         else:
-                            if registrar_donante_en_db(new_nombre, new_dni, new_email, new_telefono, new_direccion, new_tipo_sangre, new_edad, new_sexo, new_antecedentes, new_medicaciones, new_password):
-                                st.session_state['show_register_form'] = False
-                                time.sleep(1)
-                                st.rerun()
+                            st.error(f"Error al crear la campaña: {insert_response.status_code} - {insert_response.data}")
+                    except Exception as e:
+                        st.error(f"Error al conectar con Supabase para crear campaña: {e}")
+                else:
+                    st.warning("Supabase no está conectado. No se pudo crear la campaña.")
 
-                elif register_user_type == "Beneficiario":
-                    st.write("---")
-                    st.markdown("##### Datos del Beneficiario")
-                    new_nombre_beneficiario = st.text_input("Nombre", key="ben_nombre")
-                    new_telefono_beneficiario = st.text_input("Teléfono", key="ben_telefono")
-                    new_direccion_beneficiario = st.text_input("Dirección", key="ben_direccion")
-                    
-                    tipos_sangre = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
-                    new_tipo_sangre_beneficiario = st.selectbox("Tipo de Sangre Requerido", tipos_sangre, key="ben_tipo_sangre")
-
-                    register_button = st.form_submit_button("Registrar Beneficiario")
-                    if register_button:
-                        if new_password != confirm_password:
-                            st.error("Las contraseñas no coinciden.")
-                        elif not all([new_nombre_beneficiario, new_email, new_telefono_beneficiario, new_direccion_beneficiario, new_tipo_sangre_beneficiario, new_password]):
-                            st.error("Por favor, completa todos los campos obligatorios para el beneficiario.")
-                        else:
-                            if registrar_beneficiario_en_db(new_nombre_beneficiario, new_email, new_telefono_beneficiario, new_direccion_beneficiario, new_tipo_sangre_beneficiario, new_password):
-                                st.session_state['show_register_form'] = False
-                                time.sleep(1)
-                                st.rerun()
-
-                elif register_user_type == "Hospital":
-                    st.write("---")
-                    st.markdown("##### Datos del Hospital")
-                    new_nombre_hospital = st.text_input("Nombre del Hospital", key="hosp_nombre")
-                    new_direccion_hospital = st.text_input("Dirección del Hospital", key="hosp_direccion")
-                    new_telefono_hospital = st.text_input("Teléfono del Hospital", key="hosp_telefono")
-
-                    register_button = st.form_submit_button("Registrar Hospital")
-                    if register_button:
-                        if new_password != confirm_password:
-                            st.error("Las contraseñas no coinciden.")
-                        elif not all([new_nombre_hospital, new_direccion_hospital, new_telefono_hospital, new_email, new_password]):
-                            st.error("Por favor, completa todos los campos.")
-                        else:
-                            if registrar_hospital_en_db(new_nombre_hospital, new_direccion_hospital, new_telefono_hospital, new_email, new_password):
-                                st.session_state['show_register_form'] = False
-                                time.sleep(1)
-                                st.rerun()
-            
-            st.markdown("---")
-            if st.button("Volver al Inicio de Sesión"):
-                st.session_state['show_register_form'] = False
-                st.rerun()
-
-    st.write("---")
-    st.markdown("<p style='text-align: center; font-size: 0.9em; color: #888888;'>¿Eres nuevo? Explora la aplicación para ver cómo puedes ayudar.</p>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; font-size: 0.8em; color: #BBBBBB;'>Recordatorio: Para un entorno real y seguro, considera usar Supabase Auth o implementar un hashing de contraseñas robusto.</p>", unsafe_allow_html=True)
+# Asegúrate de que `beneficiario_perfil()` sea la función principal llamada desde `main.py`
+# No es necesario agregar `if __name__ == "__main__":` aquí, ya que se importará.
