@@ -4,19 +4,12 @@ import os
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
-# Ya no necesitamos importar las páginas directamente aquí si el mecanismo de multipágina
-# de Streamlit se encarga de ello. Si las mantienes, solo se usarán si las llamas explícitamente.
-# Para la estructura de "pages/" no es necesario.
-# import pages.donante1 as donante_page
-# import pages.beneficiario as beneficiario_page
-# import pages.hospital as hospital_page
-
 # --- Configuración de la página de Streamlit ---
 st.set_page_config(
     page_title="Plataforma de Donación de Sangre",
     page_icon="🩸",
-    layout="centered", # O "wide" si prefieres más espacio
-    initial_sidebar_state="auto" # Esto hace que Streamlit detecte automáticamente los archivos en 'pages/'
+    layout="centered",
+    initial_sidebar_state="auto"
 )
 
 # Carga las variables de entorno desde el archivo .env
@@ -38,7 +31,7 @@ else:
         st.error(f"Error al inicializar cliente Supabase: {e}")
         supabase_client = None
 
-# --- Funciones de autenticación y registro (SE MANTIENEN IGUAL) ---
+# --- Funciones de autenticación y registro ---
 def verificar_credenciales_desde_db(email, password, user_type):
     if supabase_client is None:
         st.error("Conexión a Supabase no disponible. No se puede verificar credenciales.")
@@ -49,19 +42,19 @@ def verificar_credenciales_desde_db(email, password, user_type):
 
     if user_type == "Donante":
         tabla = "donante"
-        id_columna_db = "ID_Donante" 
+        id_columna_db = "ID_Donante" # Asumiendo que la columna de ID es 'ID_Donante'
     elif user_type == "Beneficiario":
         tabla = "beneficiario"
-        id_columna_db = "id_beneficiario"
+        id_columna_db = "id_beneficiario" # Asumiendo que la columna de ID es 'id_beneficiario'
     elif user_type == "Hospital":
         tabla = "hospital"
-        id_columna_db = "id_hospital" 
+        id_columna_db = "id_hospital" # Asumiendo que la columna de ID es 'id_hospital'
     else:
         st.error("Tipo de usuario no válido.")
         return False, None, None
 
     try:
-        # Aquí también seleccionamos el ID para asegurarnos de que lo obtenemos
+        # Seleccionamos todas las columnas, incluyendo la contraseña y el ID
         response = supabase_client.table(tabla).select(f"*, contrafija, {id_columna_db}").eq("mail", email).limit(1).execute()
         
         if response.data:
@@ -91,11 +84,11 @@ def registrar_donante_en_db(nombre, dni, mail, telefono, direccion, tipo_sangre,
     try:
         existing_dni = supabase_client.table("donante").select("dni").eq("dni", dni).execute()
         if existing_dni.data:
-            st.error("El DNI ya está registrado. Por favor, verifica tus datos o inicia sesión.")
+            st.error("El DNI ya está registrado. Por favor, **inicia sesión** si ya tienes una cuenta, o verifica tus datos.")
             return False
         existing_mail = supabase_client.table("donante").select("mail").eq("mail", mail).execute()
         if existing_mail.data:
-            st.error("El email ya está registrado. Por favor, verifica tus datos o inicia sesión.")
+            st.error("El email ya está registrado. Por favor, **inicia sesión** si ya tienes una cuenta, o verifica tus datos.")
             return False
         data = {
             "nombre": nombre, "dni": dni, "mail": mail, "telefono": telefono,
@@ -121,7 +114,7 @@ def registrar_beneficiario_en_db(nombre, mail, telefono, direccion, tipo_sangre,
     try:
         existing_mail = supabase_client.table("beneficiario").select("mail").eq("mail", mail).execute()
         if existing_mail.data:
-            st.error("El email ya está registrado. Por favor, verifica tus datos o inicia sesión.")
+            st.error("El email ya está registrado. Por favor, **inicia sesión** si ya tienes una cuenta, o verifica tus datos.")
             return False
         data = {
             "nombre": nombre, "mail": mail, "telefono": telefono,
@@ -146,7 +139,7 @@ def registrar_hospital_en_db(nombre_hospital, direccion, telefono, mail, contraf
     try:
         existing_mail = supabase_client.table("hospital").select("mail").eq("mail", mail).execute()
         if existing_mail.data:
-            st.error("El email ya está registrado para un hospital. Por favor, verifica tus datos o inicia sesión.")
+            st.error("El email ya está registrado para un hospital. Por favor, **inicia sesión** si ya tienes una cuenta, o verifica tus datos.")
             return False
         existing_name = supabase_client.table("hospital").select("nombre_hospital").eq("nombre_hospital", nombre_hospital).execute()
         if existing_name.data:
@@ -178,41 +171,16 @@ if 'user_db_id' not in st.session_state:
     st.session_state['user_db_id'] = None
 if 'show_register_form' not in st.session_state:
     st.session_state['show_register_form'] = False
-# Nuevo: para controlar la página actual (si no usas la detección automática de pages/)
 if 'current_page' not in st.session_state:
-    st.session_state['current_page'] = 'home' # Página predeterminada
-
+    st.session_state['current_page'] = 'home'
 
 # --- Lógica principal de la aplicación ---
 if st.session_state['logged_in']:
     st.sidebar.button("Cerrar Sesión", on_click=lambda: st.session_state.update({'logged_in': False, 'user_type': None, 'user_email': None, 'user_db_id': None, 'show_register_form': False, 'current_page': 'home'}))
     st.sidebar.success(f"Sesión iniciada como: **{st.session_state['user_type']}**")
     
-    # Después de iniciar sesión, el main.py no debe renderizar el contenido de las páginas de los roles directamente.
-    # Streamlit se encarga de eso a través del sidebar si los archivos están en la carpeta 'pages/'.
-    # Puedes dejar un mensaje de bienvenida general aquí si quieres, o dejarlo vacío.
     st.markdown(f"<h1 style='text-align: center; color: #B22222;'>¡Bienvenido, {st.session_state['user_email']}!</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; font-size: 1.2em;'>Selecciona una opción del menú lateral.</p>", unsafe_allow_html=True)
-
-    # Si tu estructura de páginas con st.sidebar no funciona por algún motivo,
-    # y quieres un manejo explícito de páginas, DESCOMENTA LO SIGUIENTE y COMENTA lo de arriba:
-    # if st.session_state['user_type'] == 'Donante':
-    #     st.session_state['current_page'] = 'donante'
-    # elif st.session_state['user_type'] == 'Beneficiario':
-    #     st.session_state['current_page'] = 'beneficiario'
-    # elif st.session_state['user_type'] == 'Hospital':
-    #     st.session_state['current_page'] = 'hospital'
-    # st.rerun() # Fuerza una recarga para ir a la página correcta
-
-    # Si usas la detección automática de pages/, no necesitas las llamadas directas:
-    # if st.session_state['user_type'] == 'Donante':
-    #     donante_page.donante_perfil()
-    # elif st.session_state['user_type'] == 'Beneficiario':
-    #     beneficiario_page.beneficiario_perfil()
-    # elif st.session_state['user_type'] == 'Hospital':
-    #     hospital_page.hospital_perfil()
-    # else:
-    #     st.error("Tipo de usuario no reconocido. Por favor, contacta al soporte.")
 
 else: # Si el usuario NO está logueado (mostrar login/registro)
     st.markdown("<h1 style='text-align: center; color: #B22222;'>🩸 Salva Vidas, Dona Sangre 🩸</h1>", unsafe_allow_html=True)
@@ -243,7 +211,7 @@ else: # Si el usuario NO está logueado (mostrar login/registro)
                         st.session_state['user_db_id'] = user_db_id
                         st.success(f"¡Bienvenido, {user_email_logueado}! Sesión iniciada como {user_type}.")
                         time.sleep(1)
-                        st.rerun() # Esto recarga la página, mostrando el contenido para usuarios logueados
+                        st.rerun()
 
             st.markdown("---")
             if st.button("¿No tenés cuenta? ¡Registrate!"):
