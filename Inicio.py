@@ -6,7 +6,7 @@ from supabase import create_client, Client
 
 # Importar las páginas de los roles
 import pages.donante1 as donante_page # Asegúrate de que este archivo exista en 'pages'
-# import pages.beneficiario as beneficiario_page # Si tienes una página de beneficiario, descomenta
+# import pages.beneficiario as beneficiario_page # Si tienes una página de beneficiario, descomenta (¡recuerda crearla!)
 import pages.hospital as hospital_page # Importa la página del hospital
 
 # --- Configuración de la página de Streamlit ---
@@ -54,7 +54,7 @@ def verificar_credenciales_desde_db(email, password, user_type):
         id_columna_db = "ID_Donante" # Asegúrate de que esta sea la columna de ID en tu tabla donante
     elif user_type == "Beneficiario":
         tabla = "beneficiario"
-        id_columna_db = "id_beneficiario" # <--- ¡CAMBIADO A 'id_beneficio' (minúsculas)!
+        id_columna_db = "id_beneficiario" # <--- ¡CORREGIDO: Ahora busca 'id_beneficiario' como solicitado!
     elif user_type == "Hospital":
         tabla = "hospital"
         id_columna_db = "id_hospital" # Asegúrate de que esta sea la columna de ID en tu tabla hospital
@@ -236,6 +236,9 @@ if st.session_state['logged_in']:
     elif st.session_state['user_type'] == 'Beneficiario':
         # Asegúrate de tener un archivo 'pages/beneficiario.py' con una función 'beneficiario_perfil()'
         st.info("Funcionalidad para Beneficiarios en desarrollo. ¡Bienvenido!")
+        # Si tienes la página del beneficiario lista, descomenta y usa:
+        # import pages.beneficiario as beneficiario_page
+        # beneficiario_page.beneficiario_perfil() 
     elif st.session_state['user_type'] == 'Hospital':
         hospital_page.hospital_perfil() # Carga la función principal de la página del hospital
     else:
@@ -380,3 +383,5 @@ else: # Si el usuario NO está logueado
     st.write("---")
     st.markdown("<p style='text-align: center; font-size: 0.9em; color: #888888;'>¿Eres nuevo? Explora la aplicación para ver cómo puedes ayudar.</p>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; font-size: 0.8em; color: #BBBBBB;'>Recordatorio: Para un entorno real y seguro, considera usar Supabase Auth o implementar un hashing de contraseñas robusto.</p>", unsafe_allow_html=True)
+
+    
