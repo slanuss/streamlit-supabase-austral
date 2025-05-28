@@ -105,13 +105,14 @@ def crear_campana_tab():
         st.markdown("Completa los siguientes datos para solicitar una donación de sangre.")
 
         nombre_campana = st.text_input("Nombre de la Campaña", help="Un título para tu solicitud de donación, ej: 'Urgente para Juan Pérez'.")
+        # Ahora sí, la columna 'descripcion' existe en la tabla 'campaña'
         descripcion = st.text_area("📝 Descripción Detallada", help="Ej: 'Se necesita sangre para operación de emergencia en Hospital Central.', 'Para paciente con anemia crónica, se agradecerá cualquier tipo de sangre.'.")
         
         # Obtener la fecha actual
         today = date.today()
         
         # Asumo que fecha_inicio es la fecha actual y fecha_fin es la fecha límite
-        fecha_inicio = st.date_input("🗓️ Fecha de Inicio (automática)", value=today, disabled=True)
+        fecha_inicio_display = st.date_input("🗓️ Fecha de Inicio (automática)", value=today, disabled=True)
         fecha_fin = st.date_input("🗓️ Fecha Límite para la Donación", min_value=today, value=today, help="Fecha hasta la cual necesitas la donación.")
         
         ubicacion = st.text_input("📍 Ubicación de la Donación", help="Ej: 'Hospital Central, Sala 3', 'Clínica San Martín'.")
@@ -129,30 +130,27 @@ def crear_campana_tab():
             st.error(f"Error al obtener el tipo de sangre del beneficiario: {e}")
             tipo_sangre_beneficiario = None
             
-        # Consideración: Si `id_hospital` en tu tabla `campaña` no es NULL, podrías necesitar un selectbox aquí.
-        # Por ahora, lo dejaremos como NULL si no se pide un hospital específico.
-        # id_hospital_asociado = st.selectbox("Asociar a Hospital (Opcional)", ["Ninguno", "Hospital A", "Hospital B"])
-        # Aquí necesitarías cargar los hospitales de tu base de datos si lo implementas.
         
         submit_button = st.form_submit_button("Crear Campaña")
 
         if submit_button:
             if not nombre_campana or not descripcion or not ubicacion:
                 st.error("Por favor, completa todos los campos obligatorios: Nombre de la Campaña, Descripción y Ubicación.")
-            elif fecha_fin < fecha_inicio:
+            elif fecha_fin < fecha_inicio_display: # Usar fecha_inicio_display que es `today`
                 st.error("La fecha límite no puede ser anterior a la fecha de inicio.")
             else:
                 try:
                     data_to_insert = {
                         "nombre_campana": nombre_campana,
-                        "descripcion": descripcion,
-                        "fecha_inicio": str(fecha_inicio),
+                        "descripcion": descripcion, # Esta es la columna que faltaba
+                        "fecha_inicio": str(fecha_inicio_display), # Usar la fecha de inicio actual
                         "fecha_fin": str(fecha_fin),
                         "ubicacion": ubicacion,
                         "id_beneficiario": user_db_id,
-                        # "id_hospital": None, # O el ID del hospital si lo seleccionas
+                        # "id_hospital": None, # Si no lo estás usando, déjalo comentado o como NULL
                         "estado_campana": "En curso" # Estado inicial
                         # Si necesitas el tipo de sangre en la campaña, debes añadir la columna 'tipo_de_sangre_requerido' a tu tabla 'campaña'
+                        # y luego descomentar la siguiente línea:
                         # "tipo_de_sangre_requerido": tipo_sangre_beneficiario,
                     }
 
@@ -191,8 +189,9 @@ def mis_campanas_tab():
             st.subheader("Campañas Pendientes/En Curso:")
             found_active = False
             for campana in campanas_response.data:
-                # Opcional: Filtrar o clasificar por estado_campana
-                if campana.get('estado_campana', '').lower() == 'en curso' or campana.get('estado_campana', '').lower() == 'próxima':
+                # Filtrar o clasificar por estado_campana
+                estado_lower = campana.get('estado_campana', '').lower()
+                if estado_lower in ['en curso', 'próxima', 'activa']: # Añadí 'activa' por si usas ese estado
                     found_active = True
                     st.markdown(f"#### {campana.get('nombre_campana', 'Campaña sin nombre')}")
                     st.write(f"**Descripción:** {campana.get('descripcion', 'N/A')}")
