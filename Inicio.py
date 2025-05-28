@@ -6,7 +6,7 @@ from supabase import create_client, Client
 
 # Importar las páginas de los roles
 import pages.donante1 as donante_page # Asegúrate de que este archivo exista en 'pages'
-# import pages.beneficiario as beneficiario_page # Si tienes una página de beneficiario, descomenta (¡recuerda crearla!)
+import pages.beneficiario as beneficiario_page # Si tienes una página de beneficiario, descomenta (¡recuerda crearla!)
 import pages.hospital as hospital_page # Importa la página del hospital
 
 # --- Configuración de la página de Streamlit ---
@@ -384,4 +384,3 @@ else: # Si el usuario NO está logueado
     st.markdown("<p style='text-align: center; font-size: 0.9em; color: #888888;'>¿Eres nuevo? Explora la aplicación para ver cómo puedes ayudar.</p>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; font-size: 0.8em; color: #BBBBBB;'>Recordatorio: Para un entorno real y seguro, considera usar Supabase Auth o implementar un hashing de contraseñas robusto.</p>", unsafe_allow_html=True)
 
-    
