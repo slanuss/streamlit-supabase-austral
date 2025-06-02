@@ -42,7 +42,8 @@ def perfil_beneficiario_tab():
             # Formulario para mostrar y modificar el perfil
             with st.form("perfil_form", clear_on_submit=False):
                 st.info("Solo se pueden modificar los campos habilitados.")
-                nombre = st.text_input("Nombre", value=beneficiario_data.get('nombre', ''))
+                # CORRECCIÓN: Usar 'nombreb' para obtener el valor inicial
+                nombre = st.text_input("Nombre", value=beneficiario_data.get('nombreb', ''))
                 # El email y tipo de sangre no se deberían poder cambiar fácilmente desde aquí
                 email = st.text_input("Email", value=beneficiario_data.get('mail', ''), disabled=True)
                 telefono = st.text_input("Teléfono", value=beneficiario_data.get('telefono', ''))
@@ -54,7 +55,8 @@ def perfil_beneficiario_tab():
 
                 if update_button:
                     # Validar si algo cambió
-                    if (nombre == beneficiario_data.get('nombre', '') and
+                    # CORRECCIÓN: Usar 'nombreb' para comparar con el valor original
+                    if (nombre == beneficiario_data.get('nombreb', '') and
                         telefono == beneficiario_data.get('telefono', '') and
                         direccion == beneficiario_data.get('direccion', '')):
                         st.warning("No hay cambios para actualizar.")
@@ -62,7 +64,7 @@ def perfil_beneficiario_tab():
 
                     # Actualizar los datos en Supabase
                     update_data = {
-                        "nombre": nombre,
+                        "nombreb": nombre, # CORRECCIÓN: Usar 'nombreb' como clave para la actualización
                         "telefono": telefono,
                         "direccion": direccion,
                     }
@@ -144,7 +146,8 @@ def crear_campana_tab():
                         "estado_campana": "En curso"
                     }
 
-                    insert_response = supabase_client.table("campaña").insert(data_to_insert).execute()
+                    # CORRECCIÓN: 'campaña' a 'campana'
+                    insert_response = supabase_client.table("campana").insert(data_to_insert).execute()
 
                     if insert_response.data:
                         st.success(f"¡Campaña '{nombre_campana}' creada exitosamente!")
@@ -171,7 +174,8 @@ def mis_campanas_tab():
         return
 
     try:
-        campanas_response = supabase_client.table("campaña").select("*").eq("id_beneficiario", user_db_id).order("fecha_fin", desc=False).execute()
+        # CORRECCIÓN: 'campaña' a 'campana'
+        campanas_response = supabase_client.table("campana").select("*").eq("id_beneficiario", user_db_id).order("fecha_fin", desc=False).execute()
 
         if campanas_response.data:
             st.subheader("Campañas Pendientes/En Curso:")
@@ -188,12 +192,11 @@ def mis_campanas_tab():
                         st.write(f"**Ubicación:** {campana.get('ubicacion', 'N/A')}")
                         st.write(f"**Estado:** `{campana.get('estado_campana', 'N/A')}`")
 
-                        # ASUMIENDO que la columna de ID en tu tabla 'campaña' se llama 'id_campana'
-                        # SI SE LLAMA DIFERENTE, CÁMBIALO AQUÍ: campana['EL_NOMBRE_DE_TU_COLUMNA_ID']
-                        if st.button(f"Finalizar Campaña", key=f"finalizar_{campana['id_campana']}"): # <<--- CAMBIO AQUÍ
+                        # ASUMIENDO que la columna de ID en tu tabla 'campana' se llama 'id_campana'
+                        if st.button(f"Finalizar Campaña", key=f"finalizar_{campana['id_campana']}"):
                             try:
-                                # Y también aquí en la consulta de actualización
-                                update_response = supabase_client.table("campaña").update({"estado_campana": "Finalizada"}).eq("id_campana", campana['id_campana']).execute() # <<--- CAMBIO AQUÍ
+                                # CORRECCIÓN: 'campaña' a 'campana'
+                                update_response = supabase_client.table("campana").update({"estado_campana": "Finalizada"}).eq("id_campana", campana['id_campana']).execute()
                                 if update_response.data:
                                     st.success(f"Campaña '{campana.get('nombre_campana', '')}' finalizada con éxito.")
                                     time.sleep(1)
@@ -229,7 +232,7 @@ def mis_campanas_tab():
     except Exception as e:
         st.error(f"Error al cargar tus campañas: {e}")
         st.exception(e)
-        st.warning("Asegúrate de que la tabla 'campaña' exista y las RLS permitan la lectura.")
+        st.warning("Asegúrate de que la tabla 'campana' exista y las RLS permitan la lectura.")
 
 
 def beneficiario_perfil_page():
