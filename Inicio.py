@@ -115,10 +115,10 @@ st.markdown("""
     }
 
     /* Estilo para el texto seleccionado dentro del selectbox */
-    /* Apunta al div que contiene el texto visible seleccionado */
-    .stSelectbox div[data-baseweb="select"] > div[role="button"] > div:first-child > div {
+    /* Apunta al span que contiene el texto visible seleccionado */
+    .stSelectbox div[data-baseweb="select"] > div[role="button"] > div:first-child > div > span {
         color: var(--dark-grey-text) !important; /* Fuerza el color del texto seleccionado */
-        font-weight: bold; /* Hace el texto seleccionado más visible */
+        font-weight: bold !important; /* Hace el texto seleccionado más visible */
     }
     /* Estilo para el placeholder del selectbox */
     .stSelectbox div[data-baseweb="select"] > div[role="button"] > div:first-child > div[data-placeholder] {
@@ -138,7 +138,7 @@ st.markdown("""
     }
     .stSelectbox li[aria-selected="true"] {
         background-color: var(--light-red); /* Fondo para la opción seleccionada en el dropdown */
-        color: var(--white); /* Texto blanco para la opción seleccionada */
+        color: var(--white) !important; /* Texto blanco para la opción seleccionada */
     }
 
 
