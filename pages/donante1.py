@@ -283,10 +283,11 @@ def donante_requisitos():
     """)
     st.info("Esta es una lista general. Siempre consulta los requisitos específicos del centro de donación.")
 
-def donante_info_donaciones():
-    st.markdown("<h2 style='color: #B22222;'>Información sobre Donaciones 💡</h2>", unsafe_allow_html=True)
-    st.write("Aquí podrás ver un historial de tus donaciones y detalles relevantes.")
-    st.info("Esta sección está en desarrollo.")
+# La función donante_info_donaciones() ya no es necesaria si la pestaña se elimina.
+# def donante_info_donaciones():
+#     st.markdown("<h2 style='color: #B22222;'>Información sobre Donaciones 💡</h2>", unsafe_allow_html=True)
+#     st.write("Aquí podrás ver un historial de tus donaciones y detalles relevantes.")
+#     st.info("Esta sección está en desarrollo.")
 
 
 # --- Función principal de la página de Donante ---
@@ -299,8 +300,8 @@ def donante_perfil_page():
         st.warning("Debes iniciar sesión como Donante para acceder a esta página.")
         st.stop() # Detiene la ejecución de la página
 
-    # Crea las pestañas para el donante
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Mi Perfil", "Campañas Activas", "Hospitales", "Requisitos", "Info Donaciones"])
+    # Crea las pestañas para el donante (sin "Info Donaciones")
+    tab1, tab2, tab3, tab4 = st.tabs(["Mi Perfil", "Campañas Activas", "Hospitales", "Requisitos"])
 
     with tab1:
         donante_perfil()
@@ -310,8 +311,7 @@ def donante_perfil_page():
         donante_hospitales()
     with tab4:
         donante_requisitos()
-    with tab5:
-        donante_info_donaciones()
+    # No hay tab5 ni llamada a donante_info_donaciones() aquí
 
 if __name__ == "__main__":
     # Si este archivo se ejecuta directamente, llama a la función de la página del donante
