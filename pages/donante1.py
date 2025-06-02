@@ -30,8 +30,8 @@ def obtener_datos_donante(donante_email):
         st.error("Conexión a Supabase no disponible. No se pueden obtener datos del donante.")
         return None
     try:
-        # Asumiendo que la columna de ID es 'ID_Donante'
-        response = supabase_client.table("donante").select("*, ID_Donante").eq("mail", donante_email).execute()
+        # Se asume que la columna de ID es 'id_donante' (en minúsculas)
+        response = supabase_client.table("donante").select("*, id_donante").eq("mail", donante_email).execute()
         if response.data:
             return response.data[0]
         else:
@@ -64,13 +64,16 @@ def obtener_campanas_activas():
     if supabase_client:
         try:
             hoy = datetime.now().strftime("%Y-%m-%d")
-            # Ajustar nombres de columnas si son diferentes en tu DB (e.g., 'nombre_campana' en lugar de 'Nombre_Campaña')
-            # Si tu tabla de campaña usa 'estado_campana' y no 'Fecha_Limite', la consulta sería:
-            response = supabase_client.table("campaña").select("*, id_campana").eq("estado_campana", "En curso").order("fecha_fin", desc=False).execute()
-            # Si aún usas Fecha_Limite y quieres que se muestre, asegúrate de que sea así en la DB
-            # response = supabase_client.table("campaña").select("*, id_campana").gte("Fecha_Limite", hoy).order("Fecha_Limite", desc=False).execute()
+            # Ajustar nombres de columnas a minúsculas según la DB
+            # Se seleccionan solo las columnas que existen en la tabla 'campana'
+            response = supabase_client.table("campana").select("id_campana, nombre_campana, fecha_inicio, fecha_fin, id_hospital, id_beneficiario").order("fecha_fin", desc=False).execute()
             if response.data:
-                return response.data
+                # Filtrar campañas cuya fecha_fin sea posterior o igual a hoy
+                campanas_filtradas = [
+                    c for c in response.data 
+                    if c.get('fecha_fin') and datetime.strptime(c['fecha_fin'], "%Y-%m-%d").date() >= datetime.now().date()
+                ]
+                return campanas_filtradas
             else:
                 return []
         except Exception as e:
@@ -81,16 +84,20 @@ def obtener_campanas_activas():
 def inscribirse_campana(campana_id: int, donante_id: int):
     if supabase_client:
         try:
-            existing_inscription = supabase_client.table("inscripciones_campana").select("*").eq("ID_Campaña", campana_id).eq("ID_Donante", donante_id).execute()
+            # La tabla de inscripción es 'donaciones' en tu esquema
+            existing_inscription = supabase_client.table("donaciones").select("*").eq("id_campana", campana_id).eq("id_donante", donante_id).execute()
             if existing_inscription.data:
                 st.warning("⚠️ Ya estás inscrito en esta campaña.")
                 return False
 
-            data, count = supabase_client.table("inscripciones_campana").insert({
-                "ID_Campaña": campana_id,
-                "ID_Donante": donante_id,
-                "Fecha_Inscripcion": datetime.now().strftime("%Y-%m-%d")
+            # Insertar en la tabla 'donaciones' con los nombres de columna en minúsculas
+            data, count = supabase_client.table("donaciones").insert({
+                "id_campana": campana_id,
+                "id_donante": donante_id,
+                # La columna 'fecha_inscripcion' no existe en tu tabla 'donaciones', por lo tanto se elimina.
+                # Si la necesitas, deberías añadirla a la definición de la tabla 'donaciones' en tu DB.
             }).execute()
+            
             if data and len(data) > 0:
                 st.success(f"🎉 ¡Te has inscrito exitosamente a la campaña {campana_id}!")
                 return True
@@ -199,15 +206,28 @@ def donante_campanas():
 
     if campanas:
         for campana in campanas:
-            # Asegúrate de usar los nombres de columna correctos de tu tabla 'campaña'
-            # Por ejemplo, si tienes 'nombre_campana' en lugar de 'Nombre_Campaña'
-            campana_nombre = campana.get('nombre_campana', 'Sin Nombre') # Ajusta esto
-            campana_sangre = campana.get('tipo_sangre_requerida', 'N/A') # Ajusta esto
-            campana_id = campana.get('id_campana') # Ajusta esto
+            # Usar los nombres de columna correctos de tu tabla 'campana' (en minúsculas)
+            campana_nombre = campana.get('nombre_campana', 'Sin Nombre') 
+            # La columna 'tipo_sangre_requerida' no existe en tu tabla 'campana'
+            # Si necesitas el tipo de sangre, tendrías que obtenerlo a través de la relación con Beneficiario.
+            # Por ahora, se muestra 'N/A' o se puede eliminar si no es esencial aquí.
+            beneficiario_id = campana.get('id_beneficiario')
+            tipo_sangre_beneficiario = "N/A"
+            if beneficiario_id and supabase_client:
+                try:
+                    beneficiario_data = supabase_client.table("beneficiario").select("tipo_de_sangre").eq("id_beneficiario", beneficiario_id).execute()
+                    if beneficiario_data.data:
+                        tipo_sangre_beneficiario = beneficiario_data.data[0].get('tipo_de_sangre', 'N/A')
+                except Exception as e:
+                    st.warning(f"No se pudo obtener el tipo de sangre del beneficiario para la campaña {campana_nombre}: {e}")
 
-            with st.expander(f"Campaña: {campana_nombre} (Sangre: {campana_sangre})"):
-                st.write(f"**Descripción:** {campana.get('descripcion', 'N/A')}") # Ajusta esto si tu columna se llama diferente
-                st.write(f"**Fecha Límite:** {campana.get('fecha_fin', 'N/A')}") # Ajusta esto si tu columna se llama diferente
+            campana_id = campana.get('id_campana') 
+
+            with st.expander(f"Campaña: {campana_nombre} (Sangre: {tipo_sangre_beneficiario})"):
+                # La columna 'descripcion' no existe en tu tabla 'campana'. 
+                # Si la necesitas, deberías añadirla a la definición de la tabla 'campana' en tu DB.
+                st.write(f"**Descripción:** No disponible (columna 'descripcion' no existe en la tabla Campaña)") 
+                st.write(f"**Fecha Límite:** {campana.get('fecha_fin', 'N/A')}") 
                 st.write(f"**ID de Campaña:** {campana_id if campana_id else 'N/A'}")
                 
                 if donante_id_logueado and campana_id is not None:
