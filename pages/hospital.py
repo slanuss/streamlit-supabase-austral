@@ -66,7 +66,8 @@ def actualizar_datos_hospital(hospital_email, datos):
 def obtener_campanas_solidarias_hospital(hospital_id):
     if supabase_client:
         try:
-            response = supabase_client.table("campaña").select("*").eq("id_hospital", hospital_id).order("fecha_inicio", desc=False).execute()
+            # CAMBIO: 'campaña' a 'campana'
+            response = supabase_client.table("campana").select("*").eq("id_hospital", hospital_id).order("fecha_inicio", desc=False).execute()
             if response.data:
                 return response.data
             else:
@@ -81,7 +82,8 @@ def crear_nueva_campana_solidaria(datos_campana):
         st.error("Conexión a Supabase no disponible. No se puede crear la campaña solidaria.")
         return False
     try:
-        data, count = supabase_client.table("campaña").insert(datos_campana).execute()
+        # CAMBIO: 'campaña' a 'campana'
+        data, count = supabase_client.table("campana").insert(datos_campana).execute()
         if data and len(data) > 0:
             st.success("🎉 ¡Nueva campaña solidaria publicada con éxito!")
             return True
@@ -97,7 +99,8 @@ def finalizar_campana_solidaria(campana_id):
         st.error("Conexión a Supabase no disponible. No se puede finalizar la campaña.")
         return False
     try:
-        response = supabase_client.table("campaña").update({"estado_campana": "Finalizada"}).eq("id_campana", campana_id).execute()
+        # CAMBIO: 'campaña' a 'campana' y 'id_campaña' a 'id_campana'
+        response = supabase_client.table("campana").update({"estado_campana": "Finalizada"}).eq("id_campana", campana_id).execute()
         if response.data:
             st.success(f"✅ Campaña {campana_id} finalizada con éxito.")
             return True
@@ -186,7 +189,7 @@ def hospital_campanas_solidarias():
         nombre_campana = st.text_input("Nombre de la Campaña", placeholder="Jornada de Donación - Verano 2025")
         ubicacion = st.text_input("Ubicación de la Campaña", placeholder="Ej: Hall principal, Salón de usos múltiples")
         fecha_campana = st.date_input("Fecha de la Campaña", value=datetime.today().date())
-        # CAMBIO CLAVE AQUÍ: "En Curso" es ahora el valor predeterminado
+        # "En Curso" es ahora el valor predeterminado
         estado_campana_seleccionado = st.selectbox("Estado de la Campaña", ["En Curso", "Próxima", "Finalizada"]) 
 
         guardar_campana = st.form_submit_button("🚀 Publicar Campaña")
@@ -216,7 +219,6 @@ def hospital_campanas_solidarias():
             estado = campana.get("estado_campana", "N/A")
             fecha_display = campana.get("fecha_inicio", "N/A")
 
-            # REVERTIDO: Eliminado unsafe_allow_html del título del expander
             with st.expander(f"Campaña: {campana.get('nombre_campana', 'Sin Nombre')} (Estado: {estado})"):
                 st.write(f"**ID Campaña:** {campana.get('id_campana', 'N/A')}")
                 st.write(f"**Ubicación:** {campana.get('ubicacion', 'N/A')}")
