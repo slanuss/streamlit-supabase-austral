@@ -115,10 +115,14 @@ st.markdown("""
     }
 
     /* Estilo para el texto seleccionado dentro del selectbox */
-    /* Más específico para asegurar que se aplique */
-    .stSelectbox div[data-baseweb="select"] > div[role="button"] > div:first-child > div > span {
+    /* Apunta al div que contiene el texto visible seleccionado */
+    .stSelectbox div[data-baseweb="select"] > div[role="button"] > div:first-child > div {
         color: var(--dark-grey-text) !important; /* Fuerza el color del texto seleccionado */
         font-weight: bold; /* Hace el texto seleccionado más visible */
+    }
+    /* Estilo para el placeholder del selectbox */
+    .stSelectbox div[data-baseweb="select"] > div[role="button"] > div:first-child > div[data-placeholder] {
+        color: var(--medium-grey-text) !important;
     }
     /* Estilo para las opciones del dropdown del selectbox */
     .stSelectbox ul[role="listbox"] {
