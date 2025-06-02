@@ -108,7 +108,31 @@ st.markdown("""
         border: 1px solid #ced4da;
         padding: 0.5rem 1rem;
         background-color: var(--white);
+        color: var(--dark-grey-text); /* Asegura que el texto sea visible */
     }
+
+    /* Estilo para el texto seleccionado dentro del selectbox */
+    .stSelectbox div[data-baseweb="select"] > div[role="button"] > div:first-child > div {
+        color: var(--dark-grey-text) !important; /* Fuerza el color del texto seleccionado */
+        font-weight: bold; /* Hace el texto seleccionado más visible */
+    }
+    /* Estilo para las opciones del dropdown del selectbox */
+    .stSelectbox ul[role="listbox"] {
+        background-color: var(--white); /* Fondo del dropdown */
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .stSelectbox li {
+        color: var(--dark-grey-text); /* Color del texto de las opciones */
+    }
+    .stSelectbox li:hover {
+        background-color: var(--light-grey); /* Fondo al pasar el mouse por las opciones */
+    }
+    .stSelectbox li[aria-selected="true"] {
+        background-color: var(--light-red); /* Fondo para la opción seleccionada en el dropdown */
+        color: var(--white); /* Texto blanco para la opción seleccionada */
+    }
+
 
     /* Contenedores con borde */
     .stContainer {
