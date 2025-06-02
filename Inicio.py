@@ -42,15 +42,13 @@ def verificar_credenciales_desde_db(email, password, user_type):
 
     if user_type == "Donante":
         tabla = "donante"
-        # ¡¡¡ESTA ES LA LÍNEA CRÍTICA A VERIFICAR!!!
-        # Basado en tus capturas, lo más probable es 'id_donante' (minúsculas, guion bajo)
-        id_columna_db = "id_donante" # <--- CORRECCIÓN CLAVE AQUÍ
+        id_columna_db = "id_donante"
     elif user_type == "Beneficiario":
         tabla = "beneficiario"
-        id_columna_db = "id_beneficiario" # Asumiendo este nombre para Beneficiario
+        id_columna_db = "id_beneficiario"
     elif user_type == "Hospital":
         tabla = "hospital"
-        id_columna_db = "id_hospital" # Asumiendo este nombre para Hospital
+        id_columna_db = "id_hospital"
     else:
         st.error("Tipo de usuario no válido.")
         return False, None, None
@@ -84,29 +82,46 @@ def registrar_donante_en_db(nombre, dni, mail, telefono, direccion, tipo_sangre,
         st.error("Conexión a Supabase no disponible. No se puede registrar.")
         return False
     try:
+        # Verificar si el DNI ya existe
         existing_dni = supabase_client.table("donante").select("dni").eq("dni", dni).execute()
-        if existing_dni.data:
+        if existing_dni.data and len(existing_dni.data) > 0: # Añadir len(existing_dni.data) > 0 para seguridad
             st.error("El DNI ya está registrado. Por favor, **inicia sesión** si ya tienes una cuenta, o verifica tus datos.")
             return False
+        
+        # Verificar si el email ya existe
         existing_mail = supabase_client.table("donante").select("mail").eq("mail", mail).execute()
-        if existing_mail.data:
+        if existing_mail.data and len(existing_mail.data) > 0: # Añadir len(existing_mail.data) > 0 para seguridad
             st.error("El email ya está registrado. Por favor, **inicia sesión** si ya tienes una cuenta, o verifica tus datos.")
             return False
+        
         data = {
-            "nombre": nombre, "dni": dni, "mail": mail, "telefono": telefono,
-            "direccion": direccion, "tipo_de_sangre": tipo_sangre,
-            "edad": edad, "sexo": sexo, "antecedentes": antecedentes,
-            "medicaciones": medicaciones, "contrafija": contrafija
+            "nombred": nombre, # CORRECCIÓN: Usar 'nombred' en lugar de 'nombre'
+            "dni": dni,       # CORRECCIÓN: Ahora esta columna existe en la DB
+            "mail": mail,
+            "telefono": telefono,
+            "direccion": direccion,
+            "tipo_de_sangre": tipo_sangre,
+            "edad": edad,
+            "sexo": sexo,     # CORRECCIÓN: Se asume que 'sexo' en DB es VARCHAR(10) para estos valores
+            "antecedentes": antecedentes,
+            "medicaciones": medicaciones,
+            "contrafija": contrafija,
+            "cumple_requisitos": False # Se asume que al registrarse, no cumple requisitos hasta verificación
         }
+        
         response = supabase_client.table("donante").insert(data).execute()
+        
         if response.data:
             st.success("¡Registro de donante exitoso! Ahora puedes iniciar sesión.")
             return True
         else:
             st.error(f"Error al registrar donante: {response.status_code} - {response.data}")
+            # Puedes imprimir el error de Supabase para depuración más detallada
+            st.warning("Detalles técnicos del error: " + str(response.error)) 
             return False
     except Exception as e:
         st.error(f"Error al registrar donante en Supabase: {e}")
+        st.exception(e) # Esto mostrará el traceback completo en Streamlit
         return False
 
 def registrar_beneficiario_en_db(nombre, mail, telefono, direccion, tipo_sangre, contrafija):
@@ -115,11 +130,12 @@ def registrar_beneficiario_en_db(nombre, mail, telefono, direccion, tipo_sangre,
         return False
     try:
         existing_mail = supabase_client.table("beneficiario").select("mail").eq("mail", mail).execute()
-        if existing_mail.data:
+        if existing_mail.data and len(existing_mail.data) > 0:
             st.error("El email ya está registrado. Por favor, **inicia sesión** si ya tienes una cuenta, o verifica tus datos.")
             return False
         data = {
-            "nombre": nombre, "mail": mail, "telefono": telefono,
+            "nombreb": nombre, # Asumo que es nombreb para beneficiario
+            "mail": mail, "telefono": telefono,
             "direccion": direccion, "tipo_de_sangre": tipo_sangre,
             "contrafija": contrafija
         }
@@ -129,9 +145,11 @@ def registrar_beneficiario_en_db(nombre, mail, telefono, direccion, tipo_sangre,
             return True
         else:
             st.error(f"Error al registrar beneficiario: {response.status_code} - {response.data}")
+            st.warning("Detalles técnicos del error: " + str(response.error))
             return False
     except Exception as e:
         st.error(f"Error al registrar beneficiario en Supabase: {e}")
+        st.exception(e)
         return False
 
 def registrar_hospital_en_db(nombre_hospital, direccion, telefono, mail, contrafija):
@@ -140,11 +158,11 @@ def registrar_hospital_en_db(nombre_hospital, direccion, telefono, mail, contraf
         return False
     try:
         existing_mail = supabase_client.table("hospital").select("mail").eq("mail", mail).execute()
-        if existing_mail.data:
+        if existing_mail.data and len(existing_mail.data) > 0:
             st.error("El email ya está registrado para un hospital. Por favor, **inicia sesión** si ya tienes una cuenta, o verifica tus datos.")
             return False
         existing_name = supabase_client.table("hospital").select("nombre_hospital").eq("nombre_hospital", nombre_hospital).execute()
-        if existing_name.data:
+        if existing_name.data and len(existing_name.data) > 0:
             st.error("Ya existe un hospital registrado con ese nombre. Por favor, verifica tus datos.")
             return False
         data = {
@@ -157,9 +175,11 @@ def registrar_hospital_en_db(nombre_hospital, direccion, telefono, mail, contraf
             return True
         else:
             st.error(f"Error al registrar hospital: {response.status_code} - {response.data}")
+            st.warning("Detalles técnicos del error: " + str(response.error))
             return False
     except Exception as e:
         st.error(f"Error al registrar hospital en Supabase: {e}")
+        st.exception(e)
         return False
 
 # --- Inicializa el estado de la sesión ---
@@ -233,12 +253,12 @@ else: # Si el usuario NO está logueado (mostrar login/registro)
                     st.write("---")
                     st.markdown("##### Datos del Donante")
                     new_nombre = st.text_input("Nombre", key="don_nombre")
-                    new_dni = st.text_input("DNI", key="don_dni")
+                    new_dni = st.text_input("DNI", key="don_dni") # El DNI ahora existe en la DB
                     new_telefono = st.text_input("Teléfono", key="don_telefono")
                     new_direccion = st.text_input("Dirección", key="don_direccion")
                     
                     new_edad = st.number_input("Edad", min_value=18, max_value=99, key="don_edad", help="Debes tener al menos 18 años para ser donante.")
-                    new_sexo = st.selectbox("Sexo", ["Masculino", "Femenino", "Otro"], key="don_sexo")
+                    new_sexo = st.selectbox("Sexo", ["Masculino", "Femenino", "Otro"], key="don_sexo") # Ahora la DB soporta estas cadenas
                     new_antecedentes = st.text_area("Antecedentes Médicos (opcional)", help="Ej: 'Alergia al polen', 'Hipertensión leve'", key="don_antecedentes")
                     new_medicaciones = st.text_area("Medicaciones Actuales (opcional)", help="Ej: 'Antihistamínicos', 'Losartan'", key="don_medicaciones")
 
@@ -252,6 +272,7 @@ else: # Si el usuario NO está logueado (mostrar login/registro)
                         elif not all([new_nombre, new_dni, new_email, new_telefono, new_direccion, new_tipo_sangre, new_edad, new_sexo, new_password]):
                             st.error("Por favor, completa todos los campos obligatorios (Nombre, DNI, Email, Teléfono, Dirección, Tipo de Sangre, Edad, Sexo, Contraseña).")
                         else:
+                            # Se pasa new_nombre directamente como "nombre" para el campo "nombred" en la DB
                             if registrar_donante_en_db(new_nombre, new_dni, new_email, new_telefono, new_direccion, new_tipo_sangre, new_edad, new_sexo, new_antecedentes, new_medicaciones, new_password):
                                 st.session_state['show_register_form'] = False
                                 time.sleep(1)
