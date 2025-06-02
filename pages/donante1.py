@@ -133,13 +133,16 @@ def donante_perfil():
         valores_iniciales["direccion"] = perfil_existente.get("direccion", "")
         valores_iniciales["edad"] = perfil_existente.get("edad", 18)
         
-        sexo_opciones = ["Masculino", "Femenino", "Otro"]
-        if perfil_existente.get("sexo") and perfil_existente.get("sexo") in sexo_opciones:
-            valores_iniciales["sexo"] = perfil_existente.get("sexo")
-        elif perfil_existente.get("sexo") == 'M': # Para compatibilidad si usas solo M/F en DB
+        # Mapeo de valores de DB a opciones de display
+        sexo_db = perfil_existente.get("sexo")
+        if sexo_db == 'M':
             valores_iniciales["sexo"] = "Masculino"
-        elif perfil_existente.get("sexo") == 'F': # Para compatibilidad si usas solo M/F en DB
+        elif sexo_db == 'F':
             valores_iniciales["sexo"] = "Femenino"
+        elif sexo_db == 'O':
+            valores_iniciales["sexo"] = "Otro"
+        else:
+            valores_iniciales["sexo"] = "Masculino" # Default si el valor no coincide
 
         sangre_opciones = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
         if perfil_existente.get("tipo_de_sangre") in sangre_opciones:
@@ -163,7 +166,7 @@ def donante_perfil():
             
             sexo_options = ["Masculino", "Femenino", "Otro"]
             sexo_index = sexo_options.index(valores_iniciales["sexo"]) if valores_iniciales["sexo"] in sexo_options else 0
-            sexo = st.selectbox("Sexo", sexo_options, index=sexo_index)
+            sexo_seleccionado = st.selectbox("Sexo", sexo_options, index=sexo_index) # Cambiado a sexo_seleccionado
 
         st.markdown("#### Información Médica")
         sangre_options = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
@@ -179,9 +182,19 @@ def donante_perfil():
         guardar = st.form_submit_button("💾 Guardar Perfil" if not perfil_existente else "🔄 Actualizar Perfil")
 
         if guardar:
+            # Mapeo de la opción seleccionada a un solo carácter para guardar en la DB
+            sexo_para_db = ""
+            if sexo_seleccionado == "Masculino":
+                sexo_para_db = "M"
+            elif sexo_seleccionado == "Femenino":
+                sexo_para_db = "F"
+            elif sexo_seleccionado == "Otro":
+                sexo_para_db = "O"
+
             datos_a_guardar = {
                 "nombred": nombre, "mail": mail, "telefono": telefono, "direccion": direccion,
-                "edad": edad, "sexo": sexo, "tipo_de_sangre": tipo_de_sangre,
+                "edad": edad, "sexo": sexo_para_db, # Usar el valor mapeado
+                "tipo_de_sangre": tipo_de_sangre,
                 "antecedentes": antecedentes, "medicaciones": medicaciones,
                 "cumple_requisitos": cumple_requisitos_cb,
             }
