@@ -102,8 +102,7 @@ st.markdown("""
         box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
     }
 
-    /* Estilo para selectbox y text_input */
-    .stSelectbox > div > div, 
+    /* Estilo para text_input y text_area */
     .stTextInput > div > div > input, 
     .stTextArea > div > div > textarea, 
     .stDateInput > div > div {
@@ -111,34 +110,40 @@ st.markdown("""
         border: 1px solid #ced4da;
         padding: 0.5rem 1rem;
         background-color: var(--white);
-        color: var(--dark-grey-text); /* Asegura que el texto sea visible */
+        color: var(--dark-grey-text);
     }
 
-    /* Estilo para el texto seleccionado dentro del selectbox */
-    /* Apunta al span que contiene el texto visible seleccionado */
-    .stSelectbox div[data-baseweb="select"] > div[role="button"] > div:first-child > div > span {
-        color: var(--dark-grey-text) !important; /* Fuerza el color del texto seleccionado */
-        font-weight: bold !important; /* Hace el texto seleccionado más visible */
+    /* Estilo para radio buttons (st.radio) */
+    .stRadio > label {
+        color: var(--dark-grey-text); /* Color del texto de la etiqueta del radio */
     }
-    /* Estilo para el placeholder del selectbox */
-    .stSelectbox div[data-baseweb="select"] > div[role="button"] > div:first-child > div[data-placeholder] {
-        color: var(--medium-grey-text) !important;
-    }
-    /* Estilo para las opciones del dropdown del selectbox */
-    .stSelectbox ul[role="listbox"] {
-        background-color: var(--white); /* Fondo del dropdown */
+    .stRadio div[data-baseweb="radio"] {
+        background-color: var(--white); /* Fondo de cada opción de radio */
         border-radius: 8px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        border: 1px solid #e9ecef;
+        margin-bottom: 0.5rem;
+        padding: 0.5rem 1rem;
+        transition: background-color 0.2s ease;
     }
-    .stSelectbox li {
-        color: var(--dark-grey-text); /* Color del texto de las opciones */
+    .stRadio div[data-baseweb="radio"]:hover {
+        background-color: var(--light-grey);
     }
-    .stSelectbox li:hover {
-        background-color: var(--light-grey); /* Fondo al pasar el mouse por las opciones */
+    /* Estilo para la opción de radio seleccionada */
+    .stRadio div[data-baseweb="radio"][aria-checked="true"] {
+        background-color: var(--primary-red); /* Fondo de la opción seleccionada */
+        color: var(--white) !important; /* Color del texto de la opción seleccionada */
+        border-color: var(--primary-red);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
-    .stSelectbox li[aria-selected="true"] {
-        background-color: var(--light-red); /* Fondo para la opción seleccionada en el dropdown */
-        color: var(--white) !important; /* Texto blanco para la opción seleccionada */
+    .stRadio div[data-baseweb="radio"][aria-checked="true"] label {
+        color: var(--white) !important; /* Fuerza el color del texto de la opción seleccionada */
+    }
+    /* Estilo del círculo del radio button */
+    .stRadio div[data-baseweb="radio"] svg {
+        fill: var(--primary-red); /* Color del círculo cuando no está seleccionado */
+    }
+    .stRadio div[data-baseweb="radio"][aria-checked="true"] svg {
+        fill: var(--white); /* Color del círculo cuando está seleccionado */
     }
 
 
@@ -358,7 +363,9 @@ else: # Si el usuario NO está logueado (mostrar login/registro)
                 st.subheader("Inicia Sesión Aquí")
                 email = st.text_input("📧 Email de Usuario", help="Debe ser un email existente en tu tabla de Donante/Beneficiario/Hospital en Supabase.")
                 password = st.text_input("🔒 Contraseña", type="password", help="Usa la 'contrafija' de tu tabla de usuario (ej. 'hosp1' para hospital1@email.com).")
-                user_type = st.selectbox("👤 Tipo de Usuario", ["Donante", "Beneficiario", "Hospital"])
+                
+                # CAMBIO: Usar st.radio en lugar de st.selectbox
+                user_type = st.radio("👤 Tipo de Usuario", ["Donante", "Beneficiario", "Hospital"], index=0) # Default a Donante
                 
                 st.write("")
                 login_button = st.form_submit_button("Ingresar")
@@ -382,7 +389,8 @@ else: # Si el usuario NO está logueado (mostrar login/registro)
 
         else: # Formulario de registro
             st.subheader("Crea tu Cuenta Nueva")
-            register_user_type = st.selectbox("👤 ¿Qué tipo de cuenta deseas crear?", ["Donante", "Beneficiario", "Hospital"])
+            # CAMBIO: Usar st.radio en lugar de st.selectbox
+            register_user_type = st.radio("👤 ¿Qué tipo de cuenta deseas crear?", ["Donante", "Beneficiario", "Hospital"], index=0, key="reg_user_type_radio") # Default a Donante
             
             with st.form("register_form", clear_on_submit=True):
                 new_email = st.text_input("📧 Email", key="reg_email", help="Tu email será tu identificador principal.")
