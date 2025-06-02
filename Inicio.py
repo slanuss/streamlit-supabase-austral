@@ -103,7 +103,10 @@ st.markdown("""
     }
 
     /* Estilo para selectbox y text_input */
-    .stSelectbox > div > div, .stTextInput > div > div > input, .stTextArea > div > div > textarea, .stDateInput > div > div {
+    .stSelectbox > div > div, 
+    .stTextInput > div > div > input, 
+    .stTextArea > div > div > textarea, 
+    .stDateInput > div > div {
         border-radius: 8px;
         border: 1px solid #ced4da;
         padding: 0.5rem 1rem;
@@ -112,7 +115,8 @@ st.markdown("""
     }
 
     /* Estilo para el texto seleccionado dentro del selectbox */
-    .stSelectbox div[data-baseweb="select"] > div[role="button"] > div:first-child > div {
+    /* Más específico para asegurar que se aplique */
+    .stSelectbox div[data-baseweb="select"] > div[role="button"] > div:first-child > div > span {
         color: var(--dark-grey-text) !important; /* Fuerza el color del texto seleccionado */
         font-weight: bold; /* Hace el texto seleccionado más visible */
     }
