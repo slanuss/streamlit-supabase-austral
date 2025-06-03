@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import time
@@ -117,6 +116,23 @@ def inscribirse_campana(campana_id: int, donante_id: int):
            st.error(f"❌ Error al inscribirse en la campaña: {e}")
            return False
    return False
+
+
+# --- Función para obtener datos de hospitales ---
+def obtener_hospitales():
+    if supabase_client is None:
+        st.error("Conexión a Supabase no disponible. No se pueden obtener datos de hospitales.")
+        return []
+    try:
+        # Asumiendo que la tabla se llama 'hospital' y tiene 'nombre_hospital', 'direccion', 'telefono'
+        response = supabase_client.table("hospital").select("nombre_hospital, direccion, telefono").execute()
+        if response.data:
+            return response.data
+        else:
+            return []
+    except Exception as e:
+        st.error(f"Error al obtener datos de hospitales: {e}")
+        return []
 
 
 # --- Definición de las funciones de sección ---
@@ -284,18 +300,28 @@ def donante_campanas():
 
 
 def donante_hospitales():
-   st.markdown("<h2 style='color: #B22222;'>Hospitales Asociados 🏥</h2>", unsafe_allow_html=True)
-   st.info("Aquí se mostrará la lista de hospitales asociados. La funcionalidad de mapa ha sido temporalmente deshabilitada para evitar errores de instalación.")
-   st.write("Puedes contactar a los siguientes hospitales para donar:")
-   st.markdown("""
-   * **Hospital General de Agudos Dr. Juan A. Fernández**
-   * **Hospital Alemán**
-   * **Hospital Británico de Buenos Aires**
-   * **Hospital Italiano de Buenos Aires**
-   * **Hospital de Clínicas José de San Martín**
-   """)
-   st.markdown("---")
-   st.info("💡 **Consejo:** Para futuras mejoras, podemos volver a implementar un mapa interactivo una vez que las dependencias estén estables.")
+    st.markdown("<h2 style='color: #B22222;'>Hospitales Asociados 🏥</h2>", unsafe_allow_html=True)
+    st.info("Aquí encontrarás la información de contacto de los hospitales asociados para tus donaciones.")
+    
+    hospitales = obtener_hospitales() # Obtener la lista de hospitales desde la base de datos
+
+    if hospitales:
+        st.write("Puedes contactar a los siguientes hospitales para donar:")
+        for hospital in hospitales:
+            nombre = hospital.get('nombre_hospital', 'Nombre no disponible')
+            direccion = hospital.get('direccion', 'Dirección no disponible')
+            telefono = hospital.get('telefono', 'Teléfono no disponible')
+            
+            st.markdown(f"""
+            * **{nombre}**
+                * **Dirección:** {direccion}
+                * **Teléfono:** {telefono}
+            """)
+        st.markdown("---")
+    else:
+        st.info("ℹ️ No se encontraron hospitales asociados en la base de datos en este momento.")
+
+    st.info("💡 **Consejo:** Para futuras mejoras, podemos volver a implementar un mapa interactivo una vez que las dependencias estén estables.")
 
 
 def donante_requisitos():
@@ -352,4 +378,3 @@ def donante_perfil_page():
 if __name__ == "__main__":
    # Si este archivo se ejecuta directamente, llama a la función de la página del donante
    donante_perfil_page()
-
