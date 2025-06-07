@@ -4,19 +4,12 @@ import os
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
-# Ya no necesitamos importar las páginas directamente aquí si el mecanismo de multipágina
-# de Streamlit se encarga de ello. Si las mantienes, solo se usarán si las llamas explícitamente.
-# Para la estructura de "pages/" no es necesario.
-# import pages.donante1 as donante_page
-# import pages.beneficiario as beneficiario_page
-# import pages.hospital as hospital_page
-
 # --- Configuración de la página de Streamlit ---
 st.set_page_config(
     page_title="Plataforma de Donación de Sangre",
     page_icon="🩸",
-    layout="centered", # O "wide" si prefieres más espacio
-    initial_sidebar_state="auto" # Esto hace que Streamlit detecte automáticamente los archivos en 'pages/'
+    layout="centered",
+    initial_sidebar_state="auto"
 )
 
 # Carga las variables de entorno desde el archivo .env
@@ -38,7 +31,158 @@ else:
         st.error(f"Error al inicializar cliente Supabase: {e}")
         supabase_client = None
 
-# --- Funciones de autenticación y registro (SE MANTIENEN IGUAL) ---
+# --- Estilos CSS Personalizados ---
+st.markdown("""
+<style>
+    /* Paleta de colores */
+    :root {
+        --primary-red: #E05A47; /* Rojo suave */
+        --light-red: #F28C7D; /* Rojo más claro para acentos */
+        --white: #FFFFFF;
+        --light-grey: #F8F9FA; /* Fondo muy claro */
+        --dark-grey-text: #333333; /* Color de texto principal */
+        --medium-grey-text: #6c757d; /* Color de texto secundario */
+    }
+
+    body {
+        font-family: 'Inter', sans-serif;
+        color: var(--dark-grey-text);
+        background-color: var(--light-grey); /* Fondo general de la app */
+    }
+
+    /* Títulos principales */
+    h1 {
+        color: var(--primary-red);
+        text-align: center;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+    }
+
+    h2 {
+        color: var(--primary-red);
+        font-weight: 600;
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    h3 {
+        color: var(--primary-red);
+        font-weight: 500;
+        margin-top: 1rem;
+        margin-bottom: 0.8rem;
+    }
+
+    /* Subtítulos y texto informativo */
+    p {
+        color: var(--dark-grey-text);
+        line-height: 1.6;
+    }
+
+    .stAlert {
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    /* Estilo para botones */
+    .stButton > button {
+        background-color: var(--primary-red);
+        color: var(--white);
+        border-radius: 8px;
+        border: none;
+        padding: 0.75rem 1.25rem;
+        font-weight: 600;
+        transition: background-color 0.3s ease;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .stButton > button:hover {
+        background-color: var(--light-red);
+        color: var(--white);
+        box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Estilo para text_input y text_area */
+    .stTextInput > div > div > input, 
+    .stTextArea > div > div > textarea, 
+    .stDateInput > div > div {
+        border-radius: 8px;
+        border: 1px solid #ced4da;
+        padding: 0.5rem 1rem;
+        background-color: var(--white);
+        color: var(--dark-grey-text);
+    }
+
+    /* Estilo para radio buttons (st.radio) */
+    .stRadio > label {
+        color: var(--dark-grey-text); /* Color del texto de la etiqueta del radio */
+    }
+    .stRadio div[data-baseweb="radio"] {
+        background-color: var(--white); /* Fondo de cada opción de radio */
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+        margin-bottom: 0.5rem;
+        padding: 0.5rem 1rem;
+        transition: background-color 0.2s ease;
+    }
+    .stRadio div[data-baseweb="radio"]:hover {
+        background-color: var(--light-grey);
+    }
+    /* Estilo para la opción de radio seleccionada */
+    .stRadio div[data-baseweb="radio"][aria-checked="true"] {
+        background-color: var(--primary-red); /* Fondo de la opción seleccionada */
+        color: var(--white) !important; /* Color del texto de la opción seleccionada */
+        border-color: var(--primary-red);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .stRadio div[data-baseweb="radio"][aria-checked="true"] label {
+        color: var(--white) !important; /* Fuerza el color del texto de la opción seleccionada */
+    }
+    /* Estilo del círculo del radio button */
+    .stRadio div[data-baseweb="radio"] svg {
+        fill: var(--primary-red); /* Color del círculo cuando no está seleccionado */
+    }
+    .stRadio div[data-baseweb="radio"][aria-checked="true"] svg {
+        fill: var(--white); /* Color del círculo cuando está seleccionado */
+    }
+
+
+    /* Contenedores con borde */
+    .stContainer {
+        border-radius: 10px;
+        border: 1px solid #e9ecef;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        background-color: var(--white);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Sidebar */
+    .css-1d391kg { /* Selector para el fondo del sidebar */
+        background-color: var(--light-grey);
+    }
+    .css-1lcbmhc { /* Selector para el texto del sidebar */
+        color: var(--dark-grey-text);
+    }
+    .css-1lcbmhc h1 { /* Título del sidebar */
+        color: var(--primary-red);
+    }
+    .css-1lcbmhc .st-bd { /* Elementos del selectbox en sidebar */
+        color: var(--dark-grey-text);
+    }
+    .css-1lcbmhc .st-by { /* Botones en sidebar */
+        background-color: var(--primary-red);
+        color: var(--white);
+    }
+    .css-1lcbmhc .st-by:hover {
+        background-color: var(--light-red);
+    }
+
+</style>
+""", unsafe_allow_html=True)
+
+
+# --- Funciones de autenticación y registro ---
 def verificar_credenciales_desde_db(email, password, user_type):
     if supabase_client is None:
         st.error("Conexión a Supabase no disponible. No se puede verificar credenciales.")
@@ -49,19 +193,18 @@ def verificar_credenciales_desde_db(email, password, user_type):
 
     if user_type == "Donante":
         tabla = "donante"
-        id_columna_db = "ID_Donante" 
+        id_columna_db = "id_donante"
     elif user_type == "Beneficiario":
         tabla = "beneficiario"
         id_columna_db = "id_beneficiario"
     elif user_type == "Hospital":
         tabla = "hospital"
-        id_columna_db = "id_hospital" 
+        id_columna_db = "id_hospital"
     else:
         st.error("Tipo de usuario no válido.")
         return False, None, None
 
     try:
-        # Aquí también seleccionamos el ID para asegurarnos de que lo obtenemos
         response = supabase_client.table(tabla).select(f"*, contrafija, {id_columna_db}").eq("mail", email).limit(1).execute()
         
         if response.data:
@@ -90,18 +233,26 @@ def registrar_donante_en_db(nombre, dni, mail, telefono, direccion, tipo_sangre,
         return False
     try:
         existing_dni = supabase_client.table("donante").select("dni").eq("dni", dni).execute()
-        if existing_dni.data:
-            st.error("El DNI ya está registrado. Por favor, verifica tus datos o inicia sesión.")
+        if existing_dni.data and len(existing_dni.data) > 0:
+            st.error("El DNI ya está registrado. Por favor, **inicia sesión** si ya tienes una cuenta, o verifica tus datos.")
             return False
         existing_mail = supabase_client.table("donante").select("mail").eq("mail", mail).execute()
-        if existing_mail.data:
-            st.error("El email ya está registrado. Por favor, verifica tus datos o inicia sesión.")
+        if existing_mail.data and len(existing_mail.data) > 0:
+            st.error("El email ya está registrado. Por favor, **inicia sesión** si ya tienes una cuenta, o verifica tus datos.")
             return False
         data = {
-            "nombre": nombre, "dni": dni, "mail": mail, "telefono": telefono,
-            "direccion": direccion, "tipo_de_sangre": tipo_sangre,
-            "edad": edad, "sexo": sexo, "antecedentes": antecedentes,
-            "medicaciones": medicaciones, "contrafija": contrafija
+            "nombred": nombre,
+            "dni": dni,
+            "mail": mail,
+            "telefono": telefono,
+            "direccion": direccion,
+            "tipo_de_sangre": tipo_sangre,
+            "edad": edad,
+            "sexo": sexo,
+            "antecedentes": antecedentes,
+            "medicaciones": medicaciones,
+            "contrafija": contrafija,
+            "cumple_requisitos": False
         }
         response = supabase_client.table("donante").insert(data).execute()
         if response.data:
@@ -109,9 +260,11 @@ def registrar_donante_en_db(nombre, dni, mail, telefono, direccion, tipo_sangre,
             return True
         else:
             st.error(f"Error al registrar donante: {response.status_code} - {response.data}")
+            st.warning("Detalles técnicos del error: " + str(response.error)) 
             return False
     except Exception as e:
         st.error(f"Error al registrar donante en Supabase: {e}")
+        st.exception(e)
         return False
 
 def registrar_beneficiario_en_db(nombre, mail, telefono, direccion, tipo_sangre, contrafija):
@@ -120,11 +273,12 @@ def registrar_beneficiario_en_db(nombre, mail, telefono, direccion, tipo_sangre,
         return False
     try:
         existing_mail = supabase_client.table("beneficiario").select("mail").eq("mail", mail).execute()
-        if existing_mail.data:
-            st.error("El email ya está registrado. Por favor, verifica tus datos o inicia sesión.")
+        if existing_mail.data and len(existing_mail.data) > 0:
+            st.error("El email ya está registrado. Por favor, **inicia sesión** si ya tienes una cuenta, o verifica tus datos.")
             return False
         data = {
-            "nombre": nombre, "mail": mail, "telefono": telefono,
+            "nombreb": nombre,
+            "mail": mail, "telefono": telefono,
             "direccion": direccion, "tipo_de_sangre": tipo_sangre,
             "contrafija": contrafija
         }
@@ -134,9 +288,11 @@ def registrar_beneficiario_en_db(nombre, mail, telefono, direccion, tipo_sangre,
             return True
         else:
             st.error(f"Error al registrar beneficiario: {response.status_code} - {response.data}")
+            st.warning("Detalles técnicos del error: " + str(response.error))
             return False
     except Exception as e:
         st.error(f"Error al registrar beneficiario en Supabase: {e}")
+        st.exception(e)
         return False
 
 def registrar_hospital_en_db(nombre_hospital, direccion, telefono, mail, contrafija):
@@ -145,11 +301,11 @@ def registrar_hospital_en_db(nombre_hospital, direccion, telefono, mail, contraf
         return False
     try:
         existing_mail = supabase_client.table("hospital").select("mail").eq("mail", mail).execute()
-        if existing_mail.data:
-            st.error("El email ya está registrado para un hospital. Por favor, verifica tus datos o inicia sesión.")
+        if existing_mail.data and len(existing_mail.data) > 0:
+            st.error("El email ya está registrado para un hospital. Por favor, **inicia sesión** si ya tienes una cuenta, o verifica tus datos.")
             return False
         existing_name = supabase_client.table("hospital").select("nombre_hospital").eq("nombre_hospital", nombre_hospital).execute()
-        if existing_name.data:
+        if existing_name.data and len(existing_name.data) > 0:
             st.error("Ya existe un hospital registrado con ese nombre. Por favor, verifica tus datos.")
             return False
         data = {
@@ -162,9 +318,11 @@ def registrar_hospital_en_db(nombre_hospital, direccion, telefono, mail, contraf
             return True
         else:
             st.error(f"Error al registrar hospital: {response.status_code} - {response.data}")
+            st.warning("Detalles técnicos del error: " + str(response.error))
             return False
     except Exception as e:
         st.error(f"Error al registrar hospital en Supabase: {e}")
+        st.exception(e)
         return False
 
 # --- Inicializa el estado de la sesión ---
@@ -178,45 +336,22 @@ if 'user_db_id' not in st.session_state:
     st.session_state['user_db_id'] = None
 if 'show_register_form' not in st.session_state:
     st.session_state['show_register_form'] = False
-# Nuevo: para controlar la página actual (si no usas la detección automática de pages/)
 if 'current_page' not in st.session_state:
-    st.session_state['current_page'] = 'home' # Página predeterminada
-
+    st.session_state['current_page'] = 'home'
 
 # --- Lógica principal de la aplicación ---
 if st.session_state['logged_in']:
     st.sidebar.button("Cerrar Sesión", on_click=lambda: st.session_state.update({'logged_in': False, 'user_type': None, 'user_email': None, 'user_db_id': None, 'show_register_form': False, 'current_page': 'home'}))
     st.sidebar.success(f"Sesión iniciada como: **{st.session_state['user_type']}**")
     
-    # Después de iniciar sesión, el main.py no debe renderizar el contenido de las páginas de los roles directamente.
-    # Streamlit se encarga de eso a través del sidebar si los archivos están en la carpeta 'pages/'.
-    # Puedes dejar un mensaje de bienvenida general aquí si quieres, o dejarlo vacío.
-    st.markdown(f"<h1 style='text-align: center; color: #B22222;'>¡Bienvenido, {st.session_state['user_email']}!</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; font-size: 1.2em;'>Selecciona una opción del menú lateral.</p>", unsafe_allow_html=True)
-
-    # Si tu estructura de páginas con st.sidebar no funciona por algún motivo,
-    # y quieres un manejo explícito de páginas, DESCOMENTA LO SIGUIENTE y COMENTA lo de arriba:
-    # if st.session_state['user_type'] == 'Donante':
-    #     st.session_state['current_page'] = 'donante'
-    # elif st.session_state['user_type'] == 'Beneficiario':
-    #     st.session_state['current_page'] = 'beneficiario'
-    # elif st.session_state['user_type'] == 'Hospital':
-    #     st.session_state['current_page'] = 'hospital'
-    # st.rerun() # Fuerza una recarga para ir a la página correcta
-
-    # Si usas la detección automática de pages/, no necesitas las llamadas directas:
-    # if st.session_state['user_type'] == 'Donante':
-    #     donante_page.donante_perfil()
-    # elif st.session_state['user_type'] == 'Beneficiario':
-    #     beneficiario_page.beneficiario_perfil()
-    # elif st.session_state['user_type'] == 'Hospital':
-    #     hospital_page.hospital_perfil()
-    # else:
-    #     st.error("Tipo de usuario no reconocido. Por favor, contacta al soporte.")
+    # Título de bienvenida con el nuevo color
+    st.markdown(f"<h1 style='color: var(--primary-red);'>¡Bienvenido, {st.session_state['user_email']}!</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 1.2em; color: var(--dark-grey-text);'>Selecciona una opción del menú lateral.</p>", unsafe_allow_html=True)
 
 else: # Si el usuario NO está logueado (mostrar login/registro)
-    st.markdown("<h1 style='text-align: center; color: #B22222;'>🩸 Salva Vidas, Dona Sangre 🩸</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; font-size: 1.2em; color: #333333;'>Una comunidad unida por la vida. Inicia sesión para ser parte.</p>", unsafe_allow_html=True)
+    # Título principal con el nuevo color
+    st.markdown("<h1 style='color: var(--primary-red);'>🩸 Salva Vidas, Dona Sangre 🩸</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 1.2em; color: var(--medium-grey-text);'>Una comunidad unida por la vida. Inicia sesión para ser parte.</p>", unsafe_allow_html=True)
     
     st.write("---")
 
@@ -228,7 +363,9 @@ else: # Si el usuario NO está logueado (mostrar login/registro)
                 st.subheader("Inicia Sesión Aquí")
                 email = st.text_input("📧 Email de Usuario", help="Debe ser un email existente en tu tabla de Donante/Beneficiario/Hospital en Supabase.")
                 password = st.text_input("🔒 Contraseña", type="password", help="Usa la 'contrafija' de tu tabla de usuario (ej. 'hosp1' para hospital1@email.com).")
-                user_type = st.selectbox("👤 Tipo de Usuario", ["Donante", "Beneficiario", "Hospital"])
+                
+                # CAMBIO: Usar st.radio en lugar de st.selectbox
+                user_type = st.radio("👤 Tipo de Usuario", ["Donante", "Beneficiario", "Hospital"], index=0) # Default a Donante
                 
                 st.write("")
                 login_button = st.form_submit_button("Ingresar")
@@ -243,7 +380,7 @@ else: # Si el usuario NO está logueado (mostrar login/registro)
                         st.session_state['user_db_id'] = user_db_id
                         st.success(f"¡Bienvenido, {user_email_logueado}! Sesión iniciada como {user_type}.")
                         time.sleep(1)
-                        st.rerun() # Esto recarga la página, mostrando el contenido para usuarios logueados
+                        st.rerun()
 
             st.markdown("---")
             if st.button("¿No tenés cuenta? ¡Registrate!"):
@@ -252,7 +389,8 @@ else: # Si el usuario NO está logueado (mostrar login/registro)
 
         else: # Formulario de registro
             st.subheader("Crea tu Cuenta Nueva")
-            register_user_type = st.selectbox("👤 ¿Qué tipo de cuenta deseas crear?", ["Donante", "Beneficiario", "Hospital"])
+            # CAMBIO: Usar st.radio en lugar de st.selectbox
+            register_user_type = st.radio("👤 ¿Qué tipo de cuenta deseas crear?", ["Donante", "Beneficiario", "Hospital"], index=0, key="reg_user_type_radio") # Default a Donante
             
             with st.form("register_form", clear_on_submit=True):
                 new_email = st.text_input("📧 Email", key="reg_email", help="Tu email será tu identificador principal.")
@@ -334,5 +472,5 @@ else: # Si el usuario NO está logueado (mostrar login/registro)
                 st.rerun()
 
     st.write("---")
-    st.markdown("<p style='text-align: center; font-size: 0.9em; color: #888888;'>¿Eres nuevo? Explora la aplicación para ver cómo puedes ayudar.</p>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; font-size: 0.8em; color: #BBBBBB;'>Recordatorio: Para un entorno real y seguro, considera usar Supabase Auth o implementar un hashing de contraseñas robusto.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 0.9em; color: var(--medium-grey-text);'>¿Eres nuevo? Explora la aplicación para ver cómo puedes ayudar.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 0.8em; color: var(--medium-grey-text);'>Recordatorio: Para un entorno real y seguro, considera usar Supabase Auth o implementar un hashing de contraseñas robusto.</p>", unsafe_allow_html=True)

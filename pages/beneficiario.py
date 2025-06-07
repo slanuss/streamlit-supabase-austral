@@ -42,7 +42,8 @@ def perfil_beneficiario_tab():
             # Formulario para mostrar y modificar el perfil
             with st.form("perfil_form", clear_on_submit=False):
                 st.info("Solo se pueden modificar los campos habilitados.")
-                nombre = st.text_input("Nombre", value=beneficiario_data.get('nombre', ''))
+                # CORRECCIÓN: Usar 'nombreb' para obtener el valor inicial
+                nombre = st.text_input("Nombre", value=beneficiario_data.get('nombreb', ''))
                 # El email y tipo de sangre no se deberían poder cambiar fácilmente desde aquí
                 email = st.text_input("Email", value=beneficiario_data.get('mail', ''), disabled=True)
                 telefono = st.text_input("Teléfono", value=beneficiario_data.get('telefono', ''))
@@ -54,7 +55,8 @@ def perfil_beneficiario_tab():
 
                 if update_button:
                     # Validar si algo cambió
-                    if (nombre == beneficiario_data.get('nombre', '') and
+                    # CORRECCIÓN: Usar 'nombreb' para comparar con el valor original
+                    if (nombre == beneficiario_data.get('nombreb', '') and
                         telefono == beneficiario_data.get('telefono', '') and
                         direccion == beneficiario_data.get('direccion', '')):
                         st.warning("No hay cambios para actualizar.")
@@ -62,7 +64,7 @@ def perfil_beneficiario_tab():
 
                     # Actualizar los datos en Supabase
                     update_data = {
-                        "nombre": nombre,
+                        "nombreb": nombre, # CORRECCIÓN: Usar 'nombreb' como clave para la actualización
                         "telefono": telefono,
                         "direccion": direccion,
                     }
@@ -88,6 +90,19 @@ def perfil_beneficiario_tab():
         st.exception(e)
         st.warning("Asegúrate de que la conexión a Supabase esté activa y las RLS permitan la lectura/escritura de tu perfil.")
 
+# Nueva función para obtener la lista de hospitales
+def obtener_hospitales():
+    if supabase_client is None:
+        return []
+    try:
+        response = supabase_client.table("hospital").select("id_hospital, nombre_hospital").order("nombre_hospital").execute()
+        if response.data:
+            return response.data
+        else:
+            return []
+    except Exception as e:
+        st.error(f"Error al obtener la lista de hospitales: {e}")
+        return []
 
 def crear_campana_tab():
     st.header("💉 Crear Nueva Campaña de Donación")
@@ -98,6 +113,11 @@ def crear_campana_tab():
     if not user_db_id:
         st.warning("No se encontró el ID de beneficiario en la sesión. Por favor, reinicia la sesión.")
         return
+
+    # Obtener hospitales para el selectbox
+    hospitales = obtener_hospitales()
+    hospital_options = {h['nombre_hospital']: h['id_hospital'] for h in hospitales}
+    hospital_nombres = list(hospital_options.keys())
 
     with st.form("nueva_campana_form", clear_on_submit=True):
         st.markdown("Completa los siguientes datos para solicitar una donación de sangre.")
@@ -110,7 +130,13 @@ def crear_campana_tab():
         fecha_inicio_display = st.date_input("🗓️ Fecha de Inicio (automática)", value=today, disabled=True)
         fecha_fin = st.date_input("🗓️ Fecha Límite para la Donación", min_value=today, value=today, help="Fecha hasta la cual necesitas la donación.")
         
-        ubicacion = st.text_input("📍 Ubicación de la Donación", help="Ej: 'Hospital Central, Sala 3', 'Clínica San Martín'.")
+        # CAMBIO: Selectbox para elegir hospital en lugar de campo de ubicación
+        selected_hospital_name = st.selectbox(
+            "🏥 Selecciona el Hospital para la Campaña",
+            hospital_nombres,
+            help="Elige el hospital donde se realizará la donación."
+        )
+        selected_hospital_id = hospital_options.get(selected_hospital_name) # Obtener ID del hospital seleccionado
         
         try:
             beneficiario_response = supabase_client.table("beneficiario").select("tipo_de_sangre").eq("id_beneficiario", user_db_id).limit(1).execute()
@@ -128,23 +154,23 @@ def crear_campana_tab():
         submit_button = st.form_submit_button("Crear Campaña")
 
         if submit_button:
-            if not nombre_campana or not descripcion or not ubicacion:
-                st.error("Por favor, completa todos los campos obligatorios: Nombre de la Campaña, Descripción y Ubicación.")
+            if not nombre_campana or not descripcion or not selected_hospital_id: # Validar que se seleccionó un hospital
+                st.error("Por favor, completa todos los campos obligatorios: Nombre de la Campaña, Descripción y selecciona un Hospital.")
             elif fecha_fin < fecha_inicio_display:
                 st.error("La fecha límite no puede ser anterior a la fecha de inicio.")
             else:
                 try:
                     data_to_insert = {
                         "nombre_campana": nombre_campana,
-                        "descripcion": descripcion,
+                        "descripcion": descripcion, # Ahora esta columna existe en la DB
                         "fecha_inicio": str(fecha_inicio_display),
                         "fecha_fin": str(fecha_fin),
-                        "ubicacion": ubicacion,
+                        "id_hospital": selected_hospital_id, # Guardar el ID del hospital seleccionado
                         "id_beneficiario": user_db_id,
                         "estado_campana": "En curso"
                     }
 
-                    insert_response = supabase_client.table("campaña").insert(data_to_insert).execute()
+                    insert_response = supabase_client.table("campana").insert(data_to_insert).execute()
 
                     if insert_response.data:
                         st.success(f"¡Campaña '{nombre_campana}' creada exitosamente!")
@@ -170,8 +196,12 @@ def mis_campanas_tab():
         st.warning("No se encontró el ID de beneficiario en la sesión. Por favor, reinicia la sesión.")
         return
 
+    # Obtener hospitales para mostrar el nombre
+    hospitales_data = obtener_hospitales()
+    hospital_names_map = {h['id_hospital']: h['nombre_hospital'] for h in hospitales_data}
+
     try:
-        campanas_response = supabase_client.table("campaña").select("*").eq("id_beneficiario", user_db_id).order("fecha_fin", desc=False).execute()
+        campanas_response = supabase_client.table("campana").select("*").eq("id_beneficiario", user_db_id).order("fecha_fin", desc=False).execute()
 
         if campanas_response.data:
             st.subheader("Campañas Pendientes/En Curso:")
@@ -182,18 +212,20 @@ def mis_campanas_tab():
                     found_active = True
                     with st.container(border=True):
                         st.markdown(f"#### {campana.get('nombre_campana', 'Campaña sin nombre')}")
-                        st.write(f"**Descripción:** {campana.get('descripcion', 'N/A')}")
+                        st.write(f"**Descripción:** {campana.get('descripcion', 'N/A')}") # Mostrar descripción
                         st.write(f"**Fecha Inicio:** {campana.get('fecha_inicio', 'N/A')}")
                         st.write(f"**Fecha Límite:** {campana.get('fecha_fin', 'N/A')}")
-                        st.write(f"**Ubicación:** {campana.get('ubicacion', 'N/A')}")
+                        
+                        # Mostrar el nombre del hospital en lugar de la ubicación
+                        hospital_id = campana.get('id_hospital')
+                        hospital_name = hospital_names_map.get(hospital_id, 'Hospital Desconocido')
+                        st.write(f"**Hospital:** {hospital_name}")
+                        
                         st.write(f"**Estado:** `{campana.get('estado_campana', 'N/A')}`")
 
-                        # ASUMIENDO que la columna de ID en tu tabla 'campaña' se llama 'id_campana'
-                        # SI SE LLAMA DIFERENTE, CÁMBIALO AQUÍ: campana['EL_NOMBRE_DE_TU_COLUMNA_ID']
-                        if st.button(f"Finalizar Campaña", key=f"finalizar_{campana['id_campana']}"): # <<--- CAMBIO AQUÍ
+                        if st.button(f"Finalizar Campaña", key=f"finalizar_{campana['id_campana']}"):
                             try:
-                                # Y también aquí en la consulta de actualización
-                                update_response = supabase_client.table("campaña").update({"estado_campana": "Finalizada"}).eq("id_campana", campana['id_campana']).execute() # <<--- CAMBIO AQUÍ
+                                update_response = supabase_client.table("campana").update({"estado_campana": "Finalizada"}).eq("id_campana", campana['id_campana']).execute()
                                 if update_response.data:
                                     st.success(f"Campaña '{campana.get('nombre_campana', '')}' finalizada con éxito.")
                                     time.sleep(1)
@@ -217,7 +249,11 @@ def mis_campanas_tab():
                         st.write(f"**Descripción:** {campana.get('descripcion', 'N/A')}")
                         st.write(f"**Fecha Inicio:** {campana.get('fecha_inicio', 'N/A')}")
                         st.write(f"**Fecha Límite:** {campana.get('fecha_fin', 'N/A')}")
-                        st.write(f"**Ubicación:** {campana.get('ubicacion', 'N/A')}")
+                        
+                        hospital_id = campana.get('id_hospital')
+                        hospital_name = hospital_names_map.get(hospital_id, 'Hospital Desconocido')
+                        st.write(f"**Hospital:** {hospital_name}") # Mostrar el nombre del hospital
+                        
                         st.write(f"**Estado:** `{campana.get('estado_campana', 'N/A')}`")
             if not found_finished:
                 st.info("No tienes campañas finalizadas.")
@@ -229,7 +265,7 @@ def mis_campanas_tab():
     except Exception as e:
         st.error(f"Error al cargar tus campañas: {e}")
         st.exception(e)
-        st.warning("Asegúrate de que la tabla 'campaña' exista y las RLS permitan la lectura.")
+        st.warning("Asegúrate de que la tabla 'campana' exista y las RLS permitan la lectura.")
 
 
 def beneficiario_perfil_page():
