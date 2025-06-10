@@ -30,7 +30,7 @@ supabase_client: Client = None
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     st.error("Advertencia: Las variables de entorno SUPABASE_URL y SUPABASE_KEY no están configuradas en el .env.")
-    st.info("Por favor, confíguralas para que la conexión a la base de datos funcione.")
+    st.info("Por favor, configúralas para que la conexión a la base de datos funcione.")
 else:
     try:
         supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -270,11 +270,10 @@ def inscribirse_campana(campana_id: int, donante_id: int):
                 st.warning("⚠️ Ya estás inscrito en esta campaña.")
                 return False
 
-
+            # --- CORRECCIÓN APLICADA AQUÍ: ELIMINADO 'estado_donacion' ---
             data, count = supabase_client.table("donaciones").insert({
                 "id_campana": campana_id,
-                "id_donante": donante_id,
-                "estado_donacion": "Pendiente" # Asume un estado inicial para la donación
+                "id_donante": donante_id
             }).execute()
             
             if data and len(data) > 0:
