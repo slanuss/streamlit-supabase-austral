@@ -178,12 +178,12 @@ st.markdown("""
         background-color: var(--light-red);
     }
 
-    /* Añadido para centrar la imagen */
-    .stImage {
+    /* ESTO SE ELIMINA O MODIFICA SI QUIERES LOGO */
+    /* .stImage {
         display: flex;
         justify-content: center;
-        margin-bottom: 1rem; /* Espacio debajo del logo */
-    }
+        margin-bottom: 1rem;
+    } */
 
 </style>
 """, unsafe_allow_html=True)
@@ -357,14 +357,10 @@ if st.session_state['logged_in']:
 
 else: # Si el usuario NO está logueado (mostrar login/registro)
     
-    # Contenedor para centrar el logo y el título
-    col_logo_left, col_logo_center, col_logo_right = st.columns([1, 2, 1])
-    with col_logo_center:
-        # **CAMBIOS APLICADOS AQUÍ:**
-        # 1. Ruta de la imagen: Asegúrate que "image_f44490.png" esté en el mismo directorio que inicio.py
-        # 2. Uso de 'width' en lugar de 'use_column_width' para un tamaño fijo y evitar la advertencia.
-        st.image("image_f44490.png", width=200, output_format="PNG") # Agregado el logo
-        st.markdown("<h1 style='color: var(--primary-red);'>ONE DROP</h1>", unsafe_allow_html=True) # Nombre de la app
+    # Contenedor para centrar el nombre de la app
+    col_name_left, col_name_center, col_name_right = st.columns([1, 2, 1])
+    with col_name_center:
+        st.markdown("<h1 style='color: var(--primary-red);'>ONE DROP</h1>", unsafe_allow_html=True) # Solo el nombre de la app
         st.markdown("<p style='text-align: center; font-size: 1.2em; color: var(--medium-grey-text);'>Salva Vidas, Dona Sangre. Una comunidad unida por la vida.</p>", unsafe_allow_html=True)
     
     st.write("---")
