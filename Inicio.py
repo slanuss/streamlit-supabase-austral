@@ -6,7 +6,7 @@ from supabase import create_client, Client
 
 # --- Configuración de la página de Streamlit ---
 st.set_page_config(
-    page_title="Plataforma de Donación de Sangre",
+    page_title="One Drop - Plataforma de Donación de Sangre", # Cambiado el título de la pestaña del navegador
     page_icon="🩸",
     layout="centered",
     initial_sidebar_state="auto"
@@ -349,9 +349,14 @@ if st.session_state['logged_in']:
     st.markdown("<p style='text-align: center; font-size: 1.2em; color: var(--dark-grey-text);'>Selecciona una opción del menú lateral.</p>", unsafe_allow_html=True)
 
 else: # Si el usuario NO está logueado (mostrar login/registro)
-    # Título principal con el nuevo color
-    st.markdown("<h1 style='color: var(--primary-red);'>🩸 Salva Vidas, Dona Sangre 🩸</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; font-size: 1.2em; color: var(--medium-grey-text);'>Una comunidad unida por la vida. Inicia sesión para ser parte.</p>", unsafe_allow_html=True)
+    
+    # Contenedor para centrar el logo y el título
+    col_logo_left, col_logo_center, col_logo_right = st.columns([1, 2, 1])
+    with col_logo_center:
+        # Ruta al archivo de imagen del logo (ajusta si es necesario)
+        st.image("image_f44490.png", width=200, use_column_width=False, output_format="PNG")
+        st.markdown("<h1 style='color: var(--primary-red);'>ONE DROP</h1>", unsafe_allow_html=True) # Nombre de la app
+        st.markdown("<p style='text-align: center; font-size: 1.2em; color: var(--medium-grey-text);'>Salva Vidas, Dona Sangre. Una comunidad unida por la vida.</p>", unsafe_allow_html=True)
     
     st.write("---")
 
@@ -364,8 +369,7 @@ else: # Si el usuario NO está logueado (mostrar login/registro)
                 email = st.text_input("📧 Email de Usuario", help="Debe ser un email existente en tu tabla de Donante/Beneficiario/Hospital en Supabase.")
                 password = st.text_input("🔒 Contraseña", type="password", help="Usa la 'contrafija' de tu tabla de usuario (ej. 'hosp1' para hospital1@email.com).")
                 
-                # CAMBIO: Usar st.radio en lugar de st.selectbox
-                user_type = st.radio("👤 Tipo de Usuario", ["Donante", "Beneficiario", "Hospital"], index=0) # Default a Donante
+                user_type = st.radio("👤 Tipo de Usuario", ["Donante", "Beneficiario", "Hospital"], index=0)
                 
                 st.write("")
                 login_button = st.form_submit_button("Ingresar")
@@ -389,8 +393,7 @@ else: # Si el usuario NO está logueado (mostrar login/registro)
 
         else: # Formulario de registro
             st.subheader("Crea tu Cuenta Nueva")
-            # CAMBIO: Usar st.radio en lugar de st.selectbox
-            register_user_type = st.radio("👤 ¿Qué tipo de cuenta deseas crear?", ["Donante", "Beneficiario", "Hospital"], index=0, key="reg_user_type_radio") # Default a Donante
+            register_user_type = st.radio("👤 ¿Qué tipo de cuenta deseas crear?", ["Donante", "Beneficiario", "Hospital"], index=0, key="reg_user_type_radio")
             
             with st.form("register_form", clear_on_submit=True):
                 new_email = st.text_input("📧 Email", key="reg_email", help="Tu email será tu identificador principal.")
