@@ -6,6 +6,14 @@ from dotenv import load_dotenv
 from supabase import create_client, Client
 from datetime import datetime, time as dt_time
 
+# --- Configuración de la página de Streamlit ---
+st.set_page_config(
+    page_title="Panel de Hospital",
+    page_icon="🏥", # Hospital icon
+    layout="centered",
+    initial_sidebar_state="auto"
+)
+
 # Carga las variables de entorno desde el archivo .env
 load_dotenv()
 
@@ -13,16 +21,167 @@ load_dotenv()
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
+supabase_client: Client = None
+
 if not SUPABASE_URL or not SUPABASE_KEY:
     st.error("Advertencia: Las variables de entorno SUPABASE_URL y SUPABASE_KEY no están configuradas en el .env.")
     st.info("Por favor, confíguralas para que la conexión a la base de datos funcione.")
-    supabase_client: Client = None
 else:
     try:
-        supabase_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
     except Exception as e:
         st.error(f"Error al inicializar cliente Supabase: {e}")
-        supabase_client: Client = None
+        supabase_client = None
+
+# --- Estilos CSS Personalizados (copia exacta de inicio.py) ---
+st.markdown("""
+<style>
+    /* Paleta de colores */
+    :root {
+        --primary-red: #E05A47; /* Rojo suave */
+        --light-red: #F28C7D; /* Rojo más claro para acentos */
+        --white: #FFFFFF;
+        --light-grey: #F8F9FA; /* Fondo muy claro */
+        --dark-grey-text: #333333; /* Color de texto principal */
+        --medium-grey-text: #6c757d; /* Color de texto secundario */
+    }
+
+    body {
+        font-family: 'Inter', sans-serif;
+        color: var(--dark-grey-text);
+        background-color: var(--light-grey); /* Fondo general de la app */
+    }
+
+    /* Títulos principales */
+    h1 {
+        color: var(--primary-red);
+        text-align: center;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+    }
+
+    h2 {
+        color: var(--primary-red);
+        font-weight: 600;
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    h3 {
+        color: var(--primary-red);
+        font-weight: 500;
+        margin-top: 1rem;
+        margin-bottom: 0.8rem;
+    }
+
+    /* Subtítulos y texto informativo */
+    p {
+        color: var(--dark-grey-text);
+        line-height: 1.6;
+    }
+
+    .stAlert {
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    /* Estilo para botones */
+    .stButton > button {
+        background-color: var(--primary-red);
+        color: var(--white);
+        border-radius: 8px;
+        border: none;
+        padding: 0.75rem 1.25rem;
+        font-weight: 600;
+        transition: background-color 0.3s ease;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .stButton > button:hover {
+        background-color: var(--light-red);
+        color: var(--white);
+        box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Estilo para text_input y text_area */
+    .stTextInput > div > div > input, 
+    .stTextArea > div > div > textarea, 
+    .stDateInput > div > div {
+        border-radius: 8px;
+        border: 1px solid #ced4da;
+        padding: 0.5rem 1rem;
+        background-color: var(--white);
+        color: var(--dark-grey-text);
+    }
+
+    /* Estilo para radio buttons (st.radio) */
+    .stRadio > label {
+        color: var(--dark-grey-text); /* Color del texto de la etiqueta del radio */
+    }
+    .stRadio div[data-baseweb="radio"] {
+        background-color: var(--white); /* Fondo de cada opción de radio */
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+        margin-bottom: 0.5rem;
+        padding: 0.5rem 1rem;
+        transition: background-color 0.2s ease;
+    }
+    .stRadio div[data-baseweb="radio"]:hover {
+        background-color: var(--light-grey);
+    }
+    /* Estilo para la opción de radio seleccionada */
+    .stRadio div[data-baseweb="radio"][aria-checked="true"] {
+        background-color: var(--primary-red); /* Fondo de la opción seleccionada */
+        color: var(--white) !important; /* Color del texto de la opción seleccionada */
+        border-color: var(--primary-red);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .stRadio div[data-baseweb="radio"][aria-checked="true"] label {
+        color: var(--white) !important; /* Fuerza el color del texto de la opción seleccionada */
+    }
+    /* Estilo del círculo del radio button */
+    .stRadio div[data-baseweb="radio"] svg {
+        fill: var(--primary-red); /* Color del círculo cuando no está seleccionado */
+    }
+    .stRadio div[data-baseweb="radio"][aria-checked="true"] svg {
+        fill: var(--white); /* Color del círculo cuando está seleccionado */
+    }
+
+
+    /* Contenedores con borde */
+    .stContainer {
+        border-radius: 10px;
+        border: 1px solid #e9ecef;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        background-color: var(--white);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Sidebar */
+    .css-1d391kg { /* Selector para el fondo del sidebar */
+        background-color: var(--light-grey);
+    }
+    .css-1lcbmhc { /* Selector para el texto del sidebar */
+        color: var(--dark-grey-text);
+    }
+    .css-1lcbmhc h1 { /* Título del sidebar */
+        color: var(--primary-red);
+    }
+    .css-1lcbmhc .st-bd { /* Elementos del selectbox en sidebar */
+        color: var(--dark-grey-text);
+    }
+    .css-1lcbmhc .st-by { /* Botones en sidebar */
+        background-color: var(--primary-red);
+        color: var(--white);
+    }
+    .css-1lcbmhc .st-by:hover {
+        background-color: var(--light-red);
+    }
+
+</style>
+""", unsafe_allow_html=True)
 
 
 # --- Función para obtener datos del hospital ---
@@ -50,8 +209,8 @@ def actualizar_datos_hospital(hospital_email, datos):
         response = supabase_client.table("hospital").update(datos).eq("mail", hospital_email).execute()
         if response.data:
             st.success("✅ ¡Perfil del Hospital actualizado con éxito!")
-            time.sleep(1) # Pequeña pausa para que el usuario vea el mensaje
-            st.rerun() # Recargar la página para ver los cambios
+            time.sleep(1)
+            st.rerun()
             return True
         else:
             st.error(f"❌ Error al actualizar: {response.status_code} - {response.text}")
@@ -65,7 +224,7 @@ def actualizar_datos_hospital(hospital_email, datos):
 def obtener_campanas_solidarias_hospital(hospital_id):
     if supabase_client:
         try:
-            response = supabase_client.table("campana").select("*").eq("id_hospital", hospital_id).order("fecha_inicio", desc=False).execute()
+            response = supabase_client.table("campana").select("*, id_beneficiario").eq("id_hospital", hospital_id).order("fecha_inicio", desc=False).execute()
             if response.data:
                 return response.data
             else:
@@ -80,7 +239,7 @@ def obtener_conteo_inscripciones_campana(id_campana):
     if supabase_client is None:
         return 0
     try:
-        response = supabase_client.table("inscripciones_campana").select("id_inscripcion", count="exact").eq("id_campana", id_campana).execute()
+        response = supabase_client.table("donaciones").select("id_donacion", count="exact").eq("id_campana", id_campana).execute()
         if response.count is not None:
             return response.count
         else:
@@ -95,12 +254,19 @@ def crear_nueva_campana_solidaria(datos_campana):
         st.error("Conexión a Supabase no disponible. No se puede crear la campaña solidaria.")
         return False
     try:
+        # En la tabla 'campana', una campaña solidaria creada por un hospital NO tiene id_beneficiario
+        # Solo las campañas solicitadas por un beneficiario lo tienen.
+        # Por lo tanto, el 'id_beneficiario' debe ser None o no incluirse si es una campaña del hospital.
+        # Ajusta esto según el diseño de tu tabla `campana`.
+        if "id_beneficiario" in datos_campana and datos_campana["id_beneficiario"] is None:
+            del datos_campana["id_beneficiario"] # Eliminar si se pasa como None para evitar errores si la columna no acepta NULLs explícitamente
+        
         data, count = supabase_client.table("campana").insert(datos_campana).execute()
         if data and len(data) > 0:
             st.success("🎉 ¡Nueva campaña solidaria publicada con éxito!")
             return True
         else:
-            st.error("❌ No se pudo publicar la nueva campaña solidaria.")
+            st.error(f"❌ No se pudo publicar la nueva campaña solidaria: {data} - {count}")
             return False
     except Exception as e:
         st.error(f"❌ Error al crear nueva campaña solidaria: {e}")
@@ -125,7 +291,8 @@ def finalizar_campana_solidaria(campana_id):
 
 # --- Definición de las funciones de sección del Hospital ---
 def hospital_perfil():
-    st.markdown("<h2 style='color: #4CAF50;'>Mi Perfil de Hospital 🏥</h2>", unsafe_allow_html=True)
+    st.markdown("## Mi Perfil de Hospital 🏥")
+    st.markdown("---")
     st.write("Gestiona la información de tu hospital y asegura que tus datos estén actualizados.")
 
     email_usuario_logueado = st.session_state.get("user_email", "hospital@ejemplo.com")
@@ -151,7 +318,7 @@ def hospital_perfil():
         valores_iniciales["sitio_web"] = perfil_existente.get("sitio_web", "")
         valores_iniciales["descripcion"] = perfil_existente.get("descripcion", "")
 
-    with st.form("hospital_perfil_form"):
+    with st.form("hospital_perfil_form", border=True): # Added border to the form
         st.markdown("#### Información del Hospital")
         col1, col2 = st.columns(2)
         with col1:
@@ -183,9 +350,9 @@ def hospital_perfil():
                 st.info("Por favor, asegúrate de que el hospital ya exista en la base de datos para poder actualizar su perfil.")
 
 
-
 def hospital_campanas_solidarias():
-    st.markdown("<h2 style='color: #4CAF50;'>Mis Campañas Solidarias (Recolección en Hospital) 📢</h2>", unsafe_allow_html=True)
+    st.markdown("## Mis Campañas Solidarias (Recolección en Hospital) 📢")
+    st.markdown("---")
     st.write("Aquí puedes gestionar las campañas de donación de sangre que tu hospital ha organizado para la recolección en sus propias instalaciones.")
 
     hospital_id_logueado = st.session_state.get("user_db_id")
@@ -196,22 +363,33 @@ def hospital_campanas_solidarias():
 
     # --- Sección para CREAR Nueva Campaña Solidaria ---
     st.markdown("### ➕ Crear Nueva Campaña Solidaria")
-    with st.form("nueva_campana_solidaria_form"):
+    with st.form("nueva_campana_solidaria_form", border=True): # Added border to the form
         nombre_campana = st.text_input("Nombre de la Campaña", placeholder="Jornada de Donación - Verano 2025")
         fecha_campana = st.date_input("Fecha de la Campaña", value=datetime.today().date())
+        
+        # New: Add 'fecha_fin' for hospital-created campaigns for consistency
+        fecha_fin_campana = st.date_input("Fecha de Fin de la Campaña", value=datetime.today().date(), min_value=fecha_campana)
+
+        descripcion_campana = st.text_area("Descripción de la Campaña", help="Detalles sobre el objetivo, horario o requisitos específicos de esta campaña de recolección.")
+        
         estado_campana_seleccionado = st.selectbox("Estado de la Campaña", ["En Curso", "Próxima", "Finalizada"]) 
 
         guardar_campana = st.form_submit_button("🚀 Publicar Campaña")
 
         if guardar_campana:
-            if not nombre_campana:
-                st.error("Por favor, completa el nombre de la campaña.")
+            if not nombre_campana or not descripcion_campana: # Ensure description is also filled
+                st.error("Por favor, completa el nombre y la descripción de la campaña.")
+            elif fecha_fin_campana < fecha_campana:
+                st.error("La fecha de fin no puede ser anterior a la fecha de inicio.")
             else:
                 datos_campana = {
                     "id_hospital": hospital_id_logueado,
                     "nombre_campana": nombre_campana,
+                    "descripcion": descripcion_campana, # Added description
                     "fecha_inicio": fecha_campana.isoformat(),
+                    "fecha_fin": fecha_fin_campana.isoformat(), # Added fecha_fin
                     "estado_campana": estado_campana_seleccionado,
+                    "id_beneficiario": None # Explicitly set to None for hospital-created campaigns
                 }
                 if crear_nueva_campana_solidaria(datos_campana):
                     st.balloons()
@@ -225,18 +403,23 @@ def hospital_campanas_solidarias():
     if campanas:
         for campana in campanas:
             estado = campana.get("estado_campana", "N/A")
-            fecha_display = campana.get("fecha_inicio", "N/A")
+            nombre_campana = campana.get('nombre_campana', 'Sin Nombre')
+            descripcion = campana.get('descripcion', 'N/A') # Get description
+            fecha_inicio = campana.get('fecha_inicio', 'N/A')
+            fecha_fin = campana.get('fecha_fin', 'N/A')
             
-            # Obtener el conteo de inscripciones
             conteo_inscripciones = obtener_conteo_inscripciones_campana(campana.get('id_campana'))
 
-            with st.expander(f"Campaña: {campana.get('nombre_campana', 'Sin Nombre')} (Estado: {estado})"):
-                st.write(f"**ID Campaña:** {campana.get('id_campana', 'N/A')}")
-                st.write(f"**Fecha:** {fecha_display}")
-                st.write(f"**Personas Inscriptas:** {conteo_inscripciones}") # Mostrar el conteo
+            with st.container(border=True): # Use st.container with border for each campaign
+                st.markdown(f"#### {nombre_campana}")
+                st.write(f"**Estado:** `{estado}`")
+                st.write(f"**Descripción:** {descripcion}") # Display description
+                st.write(f"**Fecha de Inicio:** {fecha_inicio}")
+                st.write(f"**Fecha de Fin:** {fecha_fin}")
+                st.write(f"**Donantes Inscriptos:** {conteo_inscripciones}")
                 
                 if estado == "En Curso" or estado == "Próxima":
-                    if st.button(f"Finalizar Campaña '{campana.get('nombre_campana')}'", key=f"finalizar_{campana.get('id_campana')}"):
+                    if st.button(f"Finalizar Campaña '{nombre_campana}'", key=f"finalizar_{campana.get('id_campana')}"):
                         if finalizar_campana_solidaria(campana.get("id_campana")):
                             st.rerun()
                 elif estado == "Finalizada":
@@ -246,20 +429,42 @@ def hospital_campanas_solidarias():
         st.info("No hay campañas solidarias disponibles para tu hospital.")
 
 
-# --- Lógica principal de la página del Hospital ---
-if __name__ == "__main__":
-    if st.session_state.get("logged_in") and st.session_state.get("user_type") == "Hospital":
-        st.sidebar.title("Navegación Hospital 🧭")
-        menu = ["Perfil", "Campañas Solidarias"]
-        opcion = st.sidebar.selectbox("Selecciona una sección", menu)
+# --- Función principal de la página del Hospital ---
+def hospital_panel_page():
+    # Inicializa las session_state variables si no existen
+    if 'logged_in' not in st.session_state:
+        st.session_state['logged_in'] = False
+    if 'user_type' not in st.session_state:
+        st.session_state['user_type'] = None
+    if 'user_email' not in st.session_state:
+        st.session_state['user_email'] = None
+    if 'user_db_id' not in st.session_state:
+        st.session_state['user_db_id'] = None
 
-        if opcion == "Perfil":
-            hospital_perfil()
-        elif opcion == "Campañas Solidarias":
-            hospital_campanas_solidarias()
-    else:
+    if not st.session_state.get("logged_in") or st.session_state.get("user_type") != "Hospital":
         st.warning("⚠️ Debes iniciar sesión como **Hospital** para acceder a esta página.")
         if st.button("Ir a Inicio de Sesión"):
             st.session_state['logged_in'] = False
             st.session_state['user_type'] = None
             st.rerun()
+        st.stop() # Stop further execution if not logged in as Hospital
+
+    st.markdown(f"<h1 style='color: var(--primary-red);'>🏥 Panel de Hospital</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 1.2em; color: var(--dark-grey-text);'>Gestiona tu perfil y organiza campañas de donación.</p>", unsafe_allow_html=True)
+    st.markdown("---")
+
+    # Botón de cerrar sesión en la barra lateral
+    st.sidebar.button("Cerrar Sesión", on_click=lambda: st.session_state.update({'logged_in': False, 'user_type': None, 'user_email': None, 'user_db_id': None}))
+    st.sidebar.success(f"Sesión iniciada como: **{st.session_state['user_type']}**")
+
+    # Navegación por pestañas
+    tab1, tab2 = st.tabs(["Mi Perfil", "Campañas Solidarias"])
+
+    with tab1:
+        hospital_perfil()
+    with tab2:
+        hospital_campanas_solidarias()
+
+
+if __name__ == "__main__":
+    hospital_panel_page()
