@@ -6,7 +6,7 @@ from supabase import create_client, Client
 
 # --- Configuración de la página de Streamlit ---
 st.set_page_config(
-    page_title="One Drop - Plataforma de Donación de Sangre", # Cambiado el título de la pestaña del navegador
+    page_title="One Drop - Plataforma de Donación de Sangre",
     page_icon="🩸",
     layout="centered",
     initial_sidebar_state="auto"
@@ -31,159 +31,32 @@ else:
         st.error(f"Error al inicializar cliente Supabase: {e}")
         supabase_client = None
 
-# --- Estilos CSS Personalizados ---
+# --- Estilos CSS Personalizados (Se mantiene igual, no lo pego completo para brevedad) ---
 st.markdown("""
 <style>
-    /* Paleta de colores */
-    :root {
-        --primary-red: #E05A47; /* Rojo suave */
-        --light-red: #F28C7D; /* Rojo más claro para acentos */
-        --white: #FFFFFF;
-        --light-grey: #F8F9FA; /* Fondo muy claro */
-        --dark-grey-text: #333333; /* Color de texto principal */
-        --medium-grey-text: #6c757d; /* Color de texto secundario */
+    /* ... (tu CSS personalizado aquí) ... */
+
+    /* Agregado para centrar las imágenes que no usan use_container_width */
+    .stImage {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 1rem; /* Espacio debajo del logo */
     }
 
-    body {
-        font-family: 'Inter', sans-serif;
-        color: var(--dark-grey-text);
-        background-color: var(--light-grey); /* Fondo general de la app */
-    }
-
-    /* Títulos principales */
     h1 {
         color: var(--primary-red);
         text-align: center;
         font-weight: 700;
         margin-bottom: 1.5rem;
     }
-
-    h2 {
-        color: var(--primary-red);
-        font-weight: 600;
-        margin-top: 1.5rem;
-        margin-bottom: 1rem;
-    }
-
-    h3 {
-        color: var(--primary-red);
-        font-weight: 500;
-        margin-top: 1rem;
-        margin-bottom: 0.8rem;
-    }
-
-    /* Subtítulos y texto informativo */
-    p {
-        color: var(--dark-grey-text);
-        line-height: 1.6;
-    }
-
-    .stAlert {
-        border-radius: 8px;
-        padding: 1rem;
-        margin-bottom: 1rem;
-    }
-
-    /* Estilo para botones */
-    .stButton > button {
-        background-color: var(--primary-red);
-        color: var(--white);
-        border-radius: 8px;
-        border: none;
-        padding: 0.75rem 1.25rem;
-        font-weight: 600;
-        transition: background-color 0.3s ease;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    .stButton > button:hover {
-        background-color: var(--light-red);
-        color: var(--white);
-        box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
-    }
-
-    /* Estilo para text_input y text_area */
-    .stTextInput > div > div > input, 
-    .stTextArea > div > div > textarea, 
-    .stDateInput > div > div {
-        border-radius: 8px;
-        border: 1px solid #ced4da;
-        padding: 0.5rem 1rem;
-        background-color: var(--white);
-        color: var(--dark-grey-text);
-    }
-
-    /* Estilo para radio buttons (st.radio) */
-    .stRadio > label {
-        color: var(--dark-grey-text); /* Color del texto de la etiqueta del radio */
-    }
-    .stRadio div[data-baseweb="radio"] {
-        background-color: var(--white); /* Fondo de cada opción de radio */
-        border-radius: 8px;
-        border: 1px solid #e9ecef;
-        margin-bottom: 0.5rem;
-        padding: 0.5rem 1rem;
-        transition: background-color 0.2s ease;
-    }
-    .stRadio div[data-baseweb="radio"]:hover {
-        background-color: var(--light-grey);
-    }
-    /* Estilo para la opción de radio seleccionada */
-    .stRadio div[data-baseweb="radio"][aria-checked="true"] {
-        background-color: var(--primary-red); /* Fondo de la opción seleccionada */
-        color: var(--white) !important; /* Color del texto de la opción seleccionada */
-        border-color: var(--primary-red);
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-    .stRadio div[data-baseweb="radio"][aria-checked="true"] label {
-        color: var(--white) !important; /* Fuerza el color del texto de la opción seleccionada */
-    }
-    /* Estilo del círculo del radio button */
-    .stRadio div[data-baseweb="radio"] svg {
-        fill: var(--primary-red); /* Color del círculo cuando no está seleccionado */
-    }
-    .stRadio div[data-baseweb="radio"][aria-checked="true"] svg {
-        fill: var(--white); /* Color del círculo cuando está seleccionado */
-    }
-
-
-    /* Contenedores con borde */
-    .stContainer {
-        border-radius: 10px;
-        border: 1px solid #e9ecef;
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-        background-color: var(--white);
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    }
-
-    /* Sidebar */
-    .css-1d391kg { /* Selector para el fondo del sidebar */
-        background-color: var(--light-grey);
-    }
-    .css-1lcbmhc { /* Selector para el texto del sidebar */
-        color: var(--dark-grey-text);
-    }
-    .css-1lcbmhc h1 { /* Título del sidebar */
-        color: var(--primary-red);
-    }
-    .css-1lcbmhc .st-bd { /* Elementos del selectbox en sidebar */
-        color: var(--dark-grey-text);
-    }
-    .css-1lcbmhc .st-by { /* Botones en sidebar */
-        background-color: var(--primary-red);
-        color: var(--white);
-    }
-    .css-1lcbmhc .st-by:hover {
-        background-color: var(--light-red);
-    }
-
+    /* Resto de tu CSS */
 </style>
 """, unsafe_allow_html=True)
 
 
-# --- Funciones de autenticación y registro ---
+# --- Funciones de autenticación y registro (se mantienen igual) ---
 def verificar_credenciales_desde_db(email, password, user_type):
+    # ... (tu código actual para esta función) ...
     if supabase_client is None:
         st.error("Conexión a Supabase no disponible. No se puede verificar credenciales.")
         return False, None, None
@@ -228,6 +101,7 @@ def verificar_credenciales_desde_db(email, password, user_type):
         return False, None, None
 
 def registrar_donante_en_db(nombre, dni, mail, telefono, direccion, tipo_sangre, edad, sexo, antecedentes, medicaciones, contrafija):
+    # ... (tu código actual para esta función) ...
     if supabase_client is None:
         st.error("Conexión a Supabase no disponible. No se puede registrar.")
         return False
@@ -268,6 +142,7 @@ def registrar_donante_en_db(nombre, dni, mail, telefono, direccion, tipo_sangre,
         return False
 
 def registrar_beneficiario_en_db(nombre, mail, telefono, direccion, tipo_sangre, contrafija):
+    # ... (tu código actual para esta función) ...
     if supabase_client is None:
         st.error("Conexión a Supabase no disponible. No se puede registrar.")
         return False
@@ -296,6 +171,7 @@ def registrar_beneficiario_en_db(nombre, mail, telefono, direccion, tipo_sangre,
         return False
 
 def registrar_hospital_en_db(nombre_hospital, direccion, telefono, mail, contrafija):
+    # ... (tu código actual para esta función) ...
     if supabase_client is None:
         st.error("Conexión a Supabase no disponible. No se puede registrar.")
         return False
@@ -325,7 +201,8 @@ def registrar_hospital_en_db(nombre_hospital, direccion, telefono, mail, contraf
         st.exception(e)
         return False
 
-# --- Inicializa el estado de la sesión ---
+
+# --- Inicializa el estado de la sesión (se mantiene igual) ---
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 if 'user_type' not in st.session_state:
@@ -353,8 +230,11 @@ else: # Si el usuario NO está logueado (mostrar login/registro)
     # Contenedor para centrar el logo y el título
     col_logo_left, col_logo_center, col_logo_right = st.columns([1, 2, 1])
     with col_logo_center:
-        # Ruta al archivo de imagen del logo (ajusta si es necesario)
-        st.image("image_f44490.png", width=200, use_column_width=False, output_format="PNG")
+        # **CAMBIOS APLICADOS AQUÍ:**
+        # 1. Asegúrate que "image_f44490.png" esté en el mismo directorio que inicio.py
+        # 2. Reemplazado use_column_width=False con width=200 para un tamaño fijo
+        #    Si quieres que se ajuste al ancho del contenedor, usa use_container_width=True
+        st.image("image_f44490.png", width=200, output_format="PNG") 
         st.markdown("<h1 style='color: var(--primary-red);'>ONE DROP</h1>", unsafe_allow_html=True) # Nombre de la app
         st.markdown("<p style='text-align: center; font-size: 1.2em; color: var(--medium-grey-text);'>Salva Vidas, Dona Sangre. Una comunidad unida por la vida.</p>", unsafe_allow_html=True)
     
