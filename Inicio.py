@@ -41,7 +41,7 @@ st.markdown("""
         --white: #FFFFFF;
         --light-grey: #F8F9FA; /* Fondo muy claro */
         --dark-grey-text: #333333; /* Color de texto principal */
-        --medium-grey-text: #6c757d; /* Color de texto secundario */
+        --medium-grey: #6c757d; /* Color de texto secundario */
     }
 
     body {
@@ -356,9 +356,10 @@ else: # Si el usuario NO está logueado (mostrar login/registro)
         # Ruta al archivo de imagen de tu logo
         # Asegúrate de que esta ruta sea correcta en tu entorno de Streamlit
         # Si la imagen está en la misma carpeta que tu script, solo necesitas el nombre del archivo.
-        st.image("ChatGPT Image 26 jun 2025, 12_05_00 p.m..jpg", caption="Logo One Drop", use_column_width=True)
+        # Considera renombrar el archivo a algo más simple como "logo.jpg" o "logo.png" para evitar problemas con espacios y caracteres especiales.
+        st.image("logo.png", caption="Logo One Drop", use_column_width=True)
         st.markdown("<h1 style='color: var(--primary-red);'>ONE DROP</h1>", unsafe_allow_html=True) # Solo el nombre de la app
-        st.markdown("<p style='text-align: center; font-size: 1.2em; color: var(--medium-grey-text);'>Salva Vidas, Dona Sangre. Una comunidad unida por la vida.</p>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; font-size: 1.2em; color: var(--medium-grey);'>Salva Vidas, Dona Sangre. Una comunidad unida por la vida.</p>", unsafe_allow_html=True)
     
     st.write("---")
 
@@ -477,5 +478,5 @@ else: # Si el usuario NO está logueado (mostrar login/registro)
                 st.rerun()
 
     st.write("---")
-    st.markdown("<p style='text-align: center; font-size: 0.9em; color: var(--medium-grey-text);'>¿Eres nuevo? Explora la aplicación para ver cómo puedes ayudar.</p>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; font-size: 0.8em; color: var(--medium-grey-text);'>Recordatorio: Para un entorno real y seguro, considera usar Supabase Auth o implementar un hashing de contraseñas robusto.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 0.9em; color: var(--medium-grey);'>¿Eres nuevo? Explora la aplicación para ver cómo puedes ayudar.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 0.8em; color: var(--medium-grey);'>Recordatorio: Para un entorno real y seguro, considera usar Supabase Auth o implementar un hashing de contraseñas robusto.</p>", unsafe_allow_html=True)
