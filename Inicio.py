@@ -354,9 +354,9 @@ else: # Si el usuario NO está logueado (mostrar login/registro)
     logo_col1, logo_col2, logo_col3 = st.columns([1, 2, 1])
     with logo_col2:
         # Ruta al archivo de imagen de tu logo
-        # Asegúrate de que esta ruta sea correcta en tu entorno de Streamlit
-        # Si la imagen está en la misma carpeta que tu script, solo necesitas el nombre del archivo.
-        # Considera renombrar el archivo a algo más simple como "logo.jpg" o "logo.png" para evitar problemas con espacios y caracteres especiales.
+        # ¡IMPORTANTE! Asegúrate de que el archivo 'logo.png' esté en la misma carpeta que tu script de Streamlit ('Inicio.py').
+        # Si no lo está, deberás especificar la ruta completa o la ruta relativa correcta, por ejemplo:
+        # st.image("./imagenes/logo.png", ...) si está en una subcarpeta 'imagenes'.
         st.image("logo.png", caption="Logo One Drop", use_column_width=True)
         st.markdown("<h1 style='color: var(--primary-red);'>ONE DROP</h1>", unsafe_allow_html=True) # Solo el nombre de la app
         st.markdown("<p style='text-align: center; font-size: 1.2em; color: var(--medium-grey);'>Salva Vidas, Dona Sangre. Una comunidad unida por la vida.</p>", unsafe_allow_html=True)
