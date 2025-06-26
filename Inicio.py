@@ -7,7 +7,7 @@ from supabase import create_client, Client
 # --- Configuración de la página de Streamlit ---
 st.set_page_config(
     page_title="One Drop - Plataforma de Donación de Sangre", # Cambiado el título de la pestaña del navegador
-    page_icon="�",
+    page_icon="🩸",
     layout="centered",
     initial_sidebar_state="auto"
 )
@@ -357,7 +357,7 @@ else: # Si el usuario NO está logueado (mostrar login/registro)
         # ¡IMPORTANTE! Asegúrate de que el archivo 'logo.png' esté en la misma carpeta que tu script de Streamlit ('Inicio.py').
         # Si no lo está, deberás especificar la ruta completa o la ruta relativa correcta, por ejemplo:
         # st.image("./imagenes/logo.png", ...) si está en una subcarpeta 'imagenes'.
-        st.image("logo.png", use_container_width=True) # Eliminado el caption y actualizado a use_container_width
+        st.image("logo.png", width=150) # Se ajustó el ancho para hacer el logo más pequeño
         # st.markdown("<h1 style='color: var(--primary-red);'>ONE DROP</h1>", unsafe_allow_html=True) # Eliminado el título "ONE DROP" duplicado
         st.markdown("<p style='text-align: center; font-size: 1.2em; color: var(--medium-grey);'>Salva Vidas, Dona Sangre. Una comunidad unida por la vida.</p>", unsafe_allow_html=True)
     
