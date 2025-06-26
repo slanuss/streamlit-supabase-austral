@@ -178,13 +178,6 @@ st.markdown("""
         background-color: var(--light-red);
     }
 
-    /* ESTO SE ELIMINA O MODIFICA SI QUIERES LOGO */
-    /* .stImage {
-        display: flex;
-        justify-content: center;
-        margin-bottom: 1rem;
-    } */
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -357,9 +350,13 @@ if st.session_state['logged_in']:
 
 else: # Si el usuario NO está logueado (mostrar login/registro)
     
-    # Contenedor para centrar el nombre de la app
-    col_name_left, col_name_center, col_name_right = st.columns([1, 2, 1])
-    with col_name_center:
+    # Contenedor para centrar el logo y el nombre de la app
+    logo_col1, logo_col2, logo_col3 = st.columns([1, 2, 1])
+    with logo_col2:
+        # Ruta al archivo de imagen de tu logo
+        # Asegúrate de que esta ruta sea correcta en tu entorno de Streamlit
+        # Si la imagen está en la misma carpeta que tu script, solo necesitas el nombre del archivo.
+        st.image("ChatGPT Image 26 jun 2025, 12_05_00 p.m..jpg", caption="Logo One Drop", use_column_width=True)
         st.markdown("<h1 style='color: var(--primary-red);'>ONE DROP</h1>", unsafe_allow_html=True) # Solo el nombre de la app
         st.markdown("<p style='text-align: center; font-size: 1.2em; color: var(--medium-grey-text);'>Salva Vidas, Dona Sangre. Una comunidad unida por la vida.</p>", unsafe_allow_html=True)
     
