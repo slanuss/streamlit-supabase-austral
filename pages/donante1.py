@@ -283,12 +283,27 @@ def obtener_campanas_activas():
             
             if response.data:
                 hoy = datetime.now().date()
-                campanas_filtradas = [
-                    c for c in response.data 
-                    if c.get('estado_campana', '').lower() == 'en curso' and \
-                       c.get('fecha_fin') and datetime.strptime(c['fecha_fin'], "%Y-%m-%d").date() >= hoy and \
-                       c.get('estado_aprobacion_hospital', '').lower() == 'aprobada' # Solo campañas aprobadas por hospital
-                ]
+                campanas_filtradas = []
+                for c in response.data:
+                    # Asegurarse de que los valores existen y son strings antes de llamar a .lower()
+                    estado_campana_str = c.get('estado_campana')
+                    estado_aprobacion_hospital_str = c.get('estado_aprobacion_hospital')
+                    fecha_fin_str = c.get('fecha_fin')
+
+                    is_en_curso = isinstance(estado_campana_str, str) and estado_campana_str.lower() == 'en curso'
+                    is_aprobada = isinstance(estado_aprobacion_hospital_str, str) and estado_aprobacion_hospital_str.lower() == 'aprobada'
+                    
+                    is_valid_date = False
+                    if isinstance(fecha_fin_str, str):
+                        try:
+                            fecha_fin_date = datetime.strptime(fecha_fin_str, "%Y-%m-%d").date()
+                            is_valid_date = fecha_fin_date >= hoy
+                        except ValueError:
+                            # st.warning(f"Fecha de fin inválida para campaña {c.get('id_campana')}: {fecha_fin_str}")
+                            is_valid_date = False
+
+                    if is_en_curso and is_aprobada and is_valid_date:
+                        campanas_filtradas.append(c)
                 return campanas_filtradas
             else:
                 return []
