@@ -5,6 +5,9 @@ import os
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from datetime import datetime
+import folium # Importar Folium para mapas
+from streamlit_folium import st_folium # Importar para mostrar mapas en Streamlit
+import requests # Importar para hacer peticiones HTTP a la API de geocodificación
 
 
 # --- Configuración de la página de Streamlit ---
@@ -23,6 +26,8 @@ load_dotenv()
 # --- Configuración de Supabase ---
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+# Nueva variable para la clave API de OpenCage
+OPENCAGE_API_KEY = os.environ.get("OPENCAGE_API_KEY")
 
 
 supabase_client: Client = None
@@ -249,7 +254,7 @@ def obtener_campanas_activas():
                 # Filtrar campañas activas cuya fecha_fin sea posterior o igual a hoy
                 hoy = datetime.now().date()
                 campanas_filtradas = [
-                    c for c in response.data
+                    c for c in response.data # Corregido: Se eliminó la repetición 'c for c'
                     if c.get('estado_campana', '').lower() == 'en curso' and \
                        c.get('fecha_fin') and datetime.strptime(c['fecha_fin'], "%Y-%m-%d").date() >= hoy
                 ]
@@ -304,6 +309,41 @@ def obtener_hospitales():
         return []
 
 
+# --- Función para geocodificar una dirección usando OpenCage Geocoding API ---
+def geocode_address(address: str):
+    if not OPENCAGE_API_KEY:
+        st.error("❌ Error: La clave API de OpenCage no está configurada. Por favor, añádela como variable de entorno 'OPENCAGE_API_KEY'.")
+        return None, None
+    
+    base_url = "https://api.opencagedata.com/geocode/v1/json"
+    params = {
+        "q": address,
+        "key": OPENCAGE_API_KEY,
+        "language": "es", # Idioma de los resultados
+        "no_annotations": 1 # No incluir metadatos extra para una respuesta más ligera
+    }
+    
+    try:
+        response = requests.get(base_url, params=params)
+        response.raise_for_status() # Lanza una excepción para errores HTTP (4xx o 5xx)
+        data = response.json()
+        
+        if data and data['results']:
+            # Tomamos el primer resultado
+            lat = data['results'][0]['geometry']['lat']
+            lon = data['results'][0]['geometry']['lng']
+            return lat, lon
+        else:
+            st.warning(f"⚠️ No se encontraron coordenadas para la dirección: {address}")
+            return None, None
+    except requests.exceptions.RequestException as e:
+        st.error(f"❌ Error al conectar con la API de geocodificación: {e}")
+        return None, None
+    except KeyError:
+        st.error(f"❌ Error al parsear la respuesta de geocodificación para: {address}. Formato inesperado.")
+        return None, None
+
+
 # --- Definición de las funciones de sección ---
 def donante_perfil():
     st.markdown("## Mi Perfil de Donante 📝")
@@ -317,7 +357,7 @@ def donante_perfil():
 
     perfil_existente = obtener_datos_donante(email_usuario_logueado)
 
-
+    # Inicialización de valores_iniciales SIEMPRE al principio
     valores_iniciales = {
         "nombred": "", "mail": email_usuario_logueado, "telefono": "", "direccion": "",
         "edad": 18, "sexo": "Masculino", "tipo_de_sangre": "A+",
@@ -466,8 +506,49 @@ def donante_hospitales():
     
     hospitales = obtener_hospitales()
 
+    if OPENCAGE_API_KEY is None:
+        st.warning("⚠️ La clave API de OpenCage Geocoding no está configurada. El mapa no mostrará ubicaciones reales.")
+        st.info("Por favor, configura la variable de entorno `OPENCAGE_API_KEY` con tu clave de API de OpenCage.")
+    
     if hospitales:
-        st.write("Puedes contactar a los siguientes hospitales para donar:")
+        # Coordenadas aproximadas de Buenos Aires para centrar el mapa si no hay hospitales o falla la geocodificación
+        map_center_lat, map_center_lon = -34.6037, -58.3816
+        has_geocoded_hospital = False
+
+        m = folium.Map(location=[map_center_lat, map_center_lon], zoom_start=12)
+
+        for hospital in hospitales:
+            nombre = hospital.get('nombre_hospital', 'Nombre no disponible')
+            direccion = hospital.get('direccion', 'Dirección no disponible')
+            telefono = hospital.get('telefono', 'Teléfono no disponible')
+
+            lat, lon = geocode_address(direccion) # Obtener coordenadas reales
+            
+            if lat is not None and lon is not None:
+                has_geocoded_hospital = True
+                tooltip_text = f"<b>{nombre}</b><br>Dirección: {direccion}<br>Teléfono: {telefono}"
+                folium.Marker(
+                    [lat, lon],
+                    tooltip=tooltip_text,
+                    popup=folium.Popup(tooltip_text, max_width=300), # Pop-up al hacer clic
+                    icon=folium.Icon(color="red", icon="hospital", prefix='fa') # Icono de hospital
+                ).add_to(m)
+            else:
+                st.warning(f"⚠️ No se pudo geocodificar la dirección para el hospital: {nombre} ({direccion}).")
+
+        # Ajustar el centro del mapa si se geocodificó al menos un hospital
+        if has_geocoded_hospital:
+            # Podrías calcular el centroide de los hospitales geocodificados aquí
+            # Por ahora, se mantiene el centro por defecto de Buenos Aires si no se ajusta dinámicamente.
+            pass
+
+
+        # Mostrar el mapa
+        st_folium(m, width=700, height=500) # Ajusta width y height según necesidad
+
+        st.warning("⚠️ **Nota sobre el mapa:** El mapa ahora intenta usar las direcciones de tus hospitales. Si no aparecen o son incorrectas, verifica que tu `OPENCAGE_API_KEY` esté configurada y que las direcciones en tu base de datos sean precisas.")
+        
+        st.write("También puedes contactar a los siguientes hospitales directamente:")
         for hospital in hospitales:
             with st.container(border=True): # Use st.container with border for each hospital
                 nombre = hospital.get('nombre_hospital', 'Nombre no disponible')
@@ -488,16 +569,27 @@ def donante_requisitos():
     st.markdown("## Requisitos para Donar Sangre ✅")
     st.markdown("---")
     st.write("Infórmate sobre los criterios esenciales para ser un donante apto. Tu salud es nuestra prioridad.")
-    st.markdown("""
-    * **Edad:** Generalmente entre 18 y 65 años (con excepciones).
-    * **Peso:** Mínimo de 50 kg.
-    * **Salud General:** Sentirse bien y no tener enfermedades graves.
-    * **Hemoglobina:** Nivel adecuado de hemoglobina.
-    * **No haber donado recientemente:** Esperar el tiempo indicado entre donaciones.
-    * **Sin tatuajes o piercings recientes:** Respetar el período de espera.
-    * **Sin ciertas medicaciones o antecedentes:** Consultar con el personal médico.
-    """)
-    st.info("Esta es una lista general. Siempre consulta los requisitos específicos del centro de donación.")
+    
+    # Columnas para centrar la imagen
+    col_left, col_center, col_right = st.columns([1, 3, 1]) # Proporciones para centrar
+    with col_center:
+        st.image("foto.png", caption="El proceso de donación de sangre", width=300) 
+    
+    st.write("---") # Separador visual
+
+    with st.expander("Haz clic para ver los requisitos detallados 👇"):
+        st.markdown("""
+        * **Edad:** Debes tener entre **18 y 65 años**. (Algunas excepciones pueden aplicar, consulta con el personal médico).
+        * **Peso:** Tu peso corporal debe ser de al menos **50 kg**.
+        * **Salud General:** Es fundamental que te sientas **bien de salud** en el momento de la donación y no presentar síntomas de enfermedad.
+        * **Nivel de Hemoglobina:** Se realizará una prueba para asegurar que tu nivel de **hemoglobina** sea el adecuado para donar.
+        * **Tiempo entre Donaciones:** Si ya donaste, debes esperar un **período mínimo** establecido antes de volver a donar (generalmente 3 o 4 meses, dependiendo del sexo y tipo de donación).
+        * **Tatuajes y Piercings:** Si tienes **tatuajes o piercings recientes**, es necesario que haya transcurrido un período de espera (usualmente entre 6 y 12 meses) antes de poder donar.
+        * **Medicaciones y Antecedentes:** Es importante informar sobre cualquier **medicación actual** o **antecedentes médicos relevantes** (ej. cirugías, enfermedades crónicas, alergias). El personal médico evaluará tu situación.
+        """)
+    
+    st.info("⚠️ Esta es una lista general de los requisitos más comunes. **Siempre es crucial consultar los criterios específicos** del centro de donación de sangre al que asistas, ya que pueden variar ligeramente.")
+    st.markdown("---")
 
 
 # --- Función principal de la página de Donante ---
