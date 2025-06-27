@@ -7,7 +7,7 @@ from supabase import create_client, Client
 # --- Configuración de la página de Streamlit ---
 st.set_page_config(
     page_title="One Drop - Plataforma de Donación de Sangre", # Cambiado el título de la pestaña del navegador
-    page_icon="�",
+    page_icon="🩸",
     layout="centered",
     initial_sidebar_state="auto"
 )
@@ -178,12 +178,11 @@ st.markdown("""
         background-color: var(--light-red);
     }
 
-    /* Centra la imagen y limita su ancho para el logo */
+    /* Para las imágenes insertadas con st.image */
     .stImage {
         display: block; /* Asegura que la imagen sea un bloque */
-        margin-left: auto; /* Centra horizontalmente */
-        margin-right: auto; /* Centra horizontalmente */
-        max-width: 150px; /* Limita el ancho máximo del logo */
+        margin-left: auto; /* Centra horizontalmente si el contenedor lo permite */
+        margin-right: auto; /* Centra horizontalmente si el contenedor lo permite */
     }
 
 </style>
@@ -191,49 +190,51 @@ st.markdown("""
 
 
 # --- Funciones de autenticación y registro ---
-def verificar_credenciales_desde_db(email, password, user_type):
+def verificar_credenciales_desde_db(email, password):
+    """
+    Verifica las credenciales del usuario en las tablas de donante, beneficiario y hospital.
+    Determina automáticamente el tipo de usuario.
+    """
     if supabase_client is None:
         st.error("Conexión a Supabase no disponible. No se puede verificar credenciales.")
-        return False, None, None
+        return False, None, None, None
 
-    tabla = None
-    id_columna_db = None
+    user_types = ["Donante", "Beneficiario", "Hospital"]
+    
+    for user_type in user_types:
+        tabla = None
+        id_columna_db = None
 
-    if user_type == "Donante":
-        tabla = "donante"
-        id_columna_db = "id_donante"
-    elif user_type == "Beneficiario":
-        tabla = "beneficiario"
-        id_columna_db = "id_beneficiario"
-    elif user_type == "Hospital":
-        tabla = "hospital"
-        id_columna_db = "id_hospital"
-    else:
-        st.error("Tipo de usuario no válido.")
-        return False, None, None
-
-    try:
-        response = supabase_client.table(tabla).select(f"*, contrafija, {id_columna_db}").eq("mail", email).limit(1).execute()
+        if user_type == "Donante":
+            tabla = "donante"
+            id_columna_db = "id_donante"
+        elif user_type == "Beneficiario":
+            tabla = "beneficiario"
+            id_columna_db = "id_beneficiario"
+        elif user_type == "Hospital":
+            tabla = "hospital"
+            id_columna_db = "id_hospital"
         
-        if response.data:
-            usuario_db = response.data[0]
+        try:
+            response = supabase_client.table(tabla).select(f"*, contrafija, {id_columna_db}").eq("mail", email).limit(1).execute()
             
-            if usuario_db.get("contrafija") == password:
-                user_db_id = usuario_db.get(id_columna_db)
-                if user_db_id is None:
-                    st.warning(f"No se encontró la columna de ID '{id_columna_db}' en la tabla '{tabla}' para el usuario {email}. La aplicación podría no funcionar correctamente para funcionalidades que requieran el ID. Verifica tu esquema de base de datos.")
-                    return False, None, None
-                return True, email, user_db_id
-            else:
-                st.warning("Contraseña incorrecta. Por favor, verifica tu contraseña.")
-                return False, None, None
-        else:
-            st.error(f"El email '{email}' no se encontró en la tabla de {user_type}.")
-            return False, None, None
-    except Exception as e:
-        st.error(f"Error al verificar credenciales en Supabase: {e}")
-        st.exception(e)
-        return False, None, None
+            if response.data:
+                usuario_db = response.data[0]
+                
+                if usuario_db.get("contrafija") == password:
+                    user_db_id = usuario_db.get(id_columna_db)
+                    if user_db_id is None:
+                        st.warning(f"No se encontró la columna de ID '{id_columna_db}' en la tabla '{tabla}' para el usuario {email}. La aplicación podría no funcionar correctamente para funcionalidades que requieran el ID. Verifica tu esquema de base de datos.")
+                        return False, None, None, None
+                    return True, email, user_db_id, user_type # Retorna el tipo de usuario encontrado
+        except Exception as e:
+            # En un entorno de producción, podrías querer loggear este error
+            # pero no mostrarlo directamente al usuario para evitar revelar información.
+            # st.error(f"Error al verificar credenciales en Supabase para {user_type}: {e}")
+            pass # Ignoramos el error y continuamos buscando en otras tablas
+    
+    st.error(f"Credenciales incorrectas o el email '{email}' no se encontró en ninguna de las tablas de usuario.")
+    return False, None, None, None # No se encontró ninguna coincidencia
 
 def registrar_donante_en_db(nombre, dni, mail, telefono, direccion, tipo_sangre, edad, sexo, antecedentes, medicaciones, contrafija):
     if supabase_client is None:
@@ -358,16 +359,15 @@ if st.session_state['logged_in']:
 
 else: # Si el usuario NO está logueado (mostrar login/registro)
     
-    # Contenedor para centrar el logo y el nombre de la app
-    logo_col1, logo_col2, logo_col3 = st.columns([1, 2, 1])
+    # Contenedor para centrar el logo
+    logo_col1, logo_col2, logo_col3 = st.columns([3, 1, 3]) # Columnas para centrar el logo y que ocupe menos espacio
     with logo_col2:
         # Ruta al archivo de imagen de tu logo
         # ¡IMPORTANTE! Asegúrate de que el archivo 'logo.png' esté en la misma carpeta que tu script de Streamlit ('Inicio.py').
-        # Si no lo está, deberás especificar la ruta completa o la ruta relativa correcta, por ejemplo:
-        # st.image("./imagenes/logo.png", ...) si está en una subcarpeta 'imagenes'.
-        st.image("logo.png", use_container_width=True) # Se usa use_container_width para que se adapte al ancho de la columna
-        # st.markdown("<h1 style='color: var(--primary-red);'>ONE DROP</h1>", unsafe_allow_html=True) # Eliminado el título "ONE DROP" duplicado
-        st.markdown("<p style='text-align: center; font-size: 1.2em; color: var(--medium-grey);'>Salva Vidas, Dona Sangre. Una comunidad unida por la vida.</p>", unsafe_allow_html=True)
+        st.image("logo.png", use_container_width=True) # Que la imagen use el ancho de su contenedor (la columna central)
+    
+    # El lema de la aplicación, ahora fuera de las columnas del logo para que ocupe más ancho
+    st.markdown("<p style='text-align: center; font-size: 1.2em; color: var(--medium-grey);'>Salva Vidas, Dona Sangre. Una comunidad unida por la vida.</p>", unsafe_allow_html=True)
     
     st.write("---")
 
@@ -377,23 +377,21 @@ else: # Si el usuario NO está logueado (mostrar login/registro)
         if not st.session_state['show_register_form']:
             with st.form("login_form", clear_on_submit=False):
                 st.subheader("Inicia Sesión Aquí")
-                email = st.text_input("📧 Email de Usuario", help="Debe ser un email existente en tu tabla de Donante/Beneficiario/Hospital en Supabase.")
-                password = st.text_input("🔒 Contraseña", type="password", help="Usa la 'contrafija' de tu tabla de usuario (ej. 'hosp1' para hospital1@email.com).")
-                
-                user_type = st.radio("👤 Tipo de Usuario", ["Donante", "Beneficiario", "Hospital"], index=0)
+                email = st.text_input("📧 Email de Usuario", help="Tu email registrado en la plataforma.")
+                password = st.text_input("🔒 Contraseña", type="password", help="Tu contraseña.")
                 
                 st.write("")
                 login_button = st.form_submit_button("Ingresar")
 
                 if login_button:
-                    login_exitoso, user_email_logueado, user_db_id = verificar_credenciales_desde_db(email, password, user_type)
+                    login_exitoso, user_email_logueado, user_db_id, user_type_detectado = verificar_credenciales_desde_db(email, password)
                     
                     if login_exitoso:
                         st.session_state['logged_in'] = True
-                        st.session_state['user_type'] = user_type
+                        st.session_state['user_type'] = user_type_detectado 
                         st.session_state['user_email'] = user_email_logueado
                         st.session_state['user_db_id'] = user_db_id
-                        st.success(f"¡Bienvenido, {user_email_logueado}! Sesión iniciada como {user_type}.")
+                        st.success(f"¡Bienvenido, {user_email_logueado}! Sesión iniciada como {user_type_detectado}.")
                         time.sleep(1)
                         st.rerun()
 
@@ -404,7 +402,8 @@ else: # Si el usuario NO está logueado (mostrar login/registro)
 
         else: # Formulario de registro
             st.subheader("Crea tu Cuenta Nueva")
-            register_user_type = st.radio("👤 ¿Qué tipo de cuenta deseas crear?", ["Donante", "Beneficiario", "Hospital"], index=0, key="reg_user_type_radio")
+            # Modificado: Se eliminó 'Hospital' como opción de registro para el usuario final.
+            register_user_type = st.radio("👤 ¿Qué tipo de cuenta deseas crear?", ["Donante", "Beneficiario"], index=0, key="reg_user_type_radio")
             
             with st.form("register_form", clear_on_submit=True):
                 new_email = st.text_input("📧 Email", key="reg_email", help="Tu email será tu identificador principal.")
@@ -461,24 +460,25 @@ else: # Si el usuario NO está logueado (mostrar login/registro)
                                 time.sleep(1)
                                 st.rerun()
 
-                elif register_user_type == "Hospital":
-                    st.write("---")
-                    st.markdown("##### Datos del Hospital")
-                    new_nombre_hospital = st.text_input("Nombre del Hospital", key="hosp_nombre")
-                    new_direccion_hospital = st.text_input("Dirección del Hospital", key="hosp_direccion")
-                    new_telefono_hospital = st.text_input("Teléfono del Hospital", key="hosp_telefono")
+                # La opción de registro de hospital ha sido eliminada de la interfaz de usuario.
+                # elif register_user_type == "Hospital":
+                #     st.write("---")
+                #     st.markdown("##### Datos del Hospital")
+                #     new_nombre_hospital = st.text_input("Nombre del Hospital", key="hosp_nombre")
+                #     new_direccion_hospital = st.text_input("Dirección del Hospital", key="hosp_direccion")
+                #     new_telefono_hospital = st.text_input("Teléfono del Hospital", key="hosp_telefono")
 
-                    register_button = st.form_submit_button("Registrar Hospital")
-                    if register_button:
-                        if new_password != confirm_password:
-                            st.error("Las contraseñas no coinciden.")
-                        elif not all([new_nombre_hospital, new_direccion_hospital, new_telefono_hospital, new_email, new_password]):
-                            st.error("Por favor, completa todos los campos.")
-                        else:
-                            if registrar_hospital_en_db(new_nombre_hospital, new_direccion_hospital, new_telefono_hospital, new_email, new_password):
-                                st.session_state['show_register_form'] = False
-                                time.sleep(1)
-                                st.rerun()
+                #     register_button = st.form_submit_button("Registrar Hospital")
+                #     if register_button:
+                #         if new_password != confirm_password:
+                #             st.error("Las contraseñas no coinciden.")
+                #         elif not all([new_nombre_hospital, new_direccion_hospital, new_telefono_hospital, new_email, new_password]):
+                #             st.error("Por favor, completa todos los campos.")
+                #         else:
+                #             if registrar_hospital_en_db(new_nombre_hospital, new_direccion_hospital, new_telefono_hospital, new_email, new_password):
+                #                 st.session_state['show_register_form'] = False
+                #                 time.sleep(1)
+                #                 st.rerun()
             
             st.markdown("---")
             if st.button("Volver al Inicio de Sesión"):
