@@ -90,13 +90,13 @@ st.markdown("""
         padding: 0.75rem 1.25rem;
         font-weight: 600;
         transition: background-color 0.3s ease;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        box_shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
     .stButton > button:hover {
         background-color: var(--light-red);
         color: var(--white);
-        box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+        box_shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
     }
 
     /* Estilo para text_input y text_area */
@@ -130,7 +130,7 @@ st.markdown("""
         background-color: var(--primary-red); /* Fondo de la opción seleccionada */
         color: var(--white) !important; /* Color del texto de la opción seleccionada */
         border-color: var(--primary-red);
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        box_shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
     .stRadio div[data-baseweb="radio"][aria-checked="true"] label {
         color: var(--white) !important; /* Fuerza el color del texto de la opción seleccionada */
@@ -151,7 +151,7 @@ st.markdown("""
         padding: 1.5rem;
         margin-bottom: 1rem;
         background-color: var(--white);
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        box_shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     }
 
     /* Sidebar */
@@ -321,15 +321,16 @@ def crear_campana_tab():
                         "fecha_fin": str(fecha_fin),
                         "id_hospital": selected_hospital_id,
                         "id_beneficiario": user_db_id,
-                        "estado_campana": "En curso"
+                        "estado_campana": "Pendiente", # CAMBIO: El estado inicial de la campaña es 'Pendiente' para aprobación del hospital
+                        "estado_aprobacion_hospital": "Pendiente" # NUEVA COLUMNA: Estado de aprobación del hospital
                     }
 
                     insert_response = supabase_client.table("campana").insert(data_to_insert).execute()
 
                     if insert_response.data:
-                        st.success(f"¡Campaña '{nombre_campana}' creada exitosamente!")
+                        st.success(f"¡Solicitud de campaña '{nombre_campana}' enviada! Está **pendiente de aprobación** por el hospital.")
                         st.balloons()
-                        time.sleep(1)
+                        time.sleep(2) # Dar tiempo para leer el mensaje
                         st.rerun()
                     else:
                         st.error(f"Error al crear la campaña: {insert_response.error.message}")
@@ -357,12 +358,15 @@ def mis_campanas_tab():
         campanas_response = supabase_client.table("campana").select("*").eq("id_beneficiario", user_db_id).order("fecha_fin", desc=False).execute()
 
         if campanas_response.data:
-            st.subheader("Campañas Pendientes/En Curso:")
-            found_active = False
+            st.subheader("Campañas Pendientes de Aprobación / En Curso:")
+            found_active_or_pending = False
             for campana in campanas_response.data:
-                estado_lower = campana.get('estado_campana', '').lower()
-                if estado_lower in ['en curso', 'próxima', 'activa']:
-                    found_active = True
+                estado_aprobacion = campana.get('estado_aprobacion_hospital', 'Desconocido').lower()
+                estado_campana_actual = campana.get('estado_campana', 'Desconocido').lower()
+
+                # Mostrar campañas que están pendientes de aprobación o en curso (y aprobadas)
+                if estado_aprobacion == 'pendiente' or estado_campana_actual == 'en curso':
+                    found_active_or_pending = True
                     with st.container(border=True):
                         st.markdown(f"#### {campana.get('nombre_campana', 'Campaña sin nombre')}")
                         st.write(f"**Descripción:** {campana.get('descripcion', 'N/A')}")
@@ -373,31 +377,44 @@ def mis_campanas_tab():
                         hospital_name = hospital_names_map.get(hospital_id, 'Hospital Desconocido')
                         st.write(f"**Hospital:** {hospital_name}")
                         
-                        st.write(f"**Estado:** `{campana.get('estado_campana', 'N/A')}`")
+                        st.write(f"**Estado de Campaña:** `{campana.get('estado_campana', 'N/A')}`")
+                        st.write(f"**Estado de Aprobación Hospital:** `{campana.get('estado_aprobacion_hospital', 'N/A')}`")
 
-                        if st.button(f"Finalizar Campaña", key=f"finalizar_{campana['id_campana']}"):
-                            try:
-                                update_response = supabase_client.table("campana").update({"estado_campana": "Finalizada"}).eq("id_campana", campana['id_campana']).execute()
-                                if update_response.data:
-                                    st.success(f"Campaña '{campana.get('nombre_campana', '')}' finalizada con éxito.")
-                                    time.sleep(1)
-                                    st.rerun()
-                                else:
-                                    st.error(f"Error al finalizar la campaña: {update_response.error.message}")
-                                    st.warning("Detalles técnicos: " + str(update_response.error))
-                            except Exception as e:
-                                st.error(f"Error al conectar con Supabase para finalizar campaña: {e}")
-                                st.exception(e)
+                        # Opción para finalizar la campaña si está en curso y aprobada, o si está pendiente y se quiere cancelar
+                        if estado_campana_actual == 'en curso' and estado_aprobacion == 'aprobada':
+                            if st.button(f"Finalizar Campaña", key=f"finalizar_{campana['id_campana']}"):
+                                try:
+                                    update_response = supabase_client.table("campana").update({"estado_campana": "Finalizada"}).eq("id_campana", campana['id_campana']).execute()
+                                    if update_response.data:
+                                        st.success(f"Campaña '{campana.get('nombre_campana', '')}' finalizada con éxito.")
+                                        time.sleep(1)
+                                        st.rerun()
+                                    else:
+                                        st.error(f"Error al finalizar la campaña: {update_response.error.message}")
+                                        st.warning("Detalles técnicos: " + str(update_response.error))
+                                except Exception as e:
+                                    st.error(f"Error al conectar con Supabase para finalizar campaña: {e}")
+                                    st.exception(e)
+                        elif estado_aprobacion == 'pendiente':
+                            st.info("Esta campaña está esperando la aprobación del hospital.")
+                            # Podrías agregar un botón para "Cancelar Solicitud" si lo deseas
+                        elif estado_aprobacion == 'rechazada':
+                            st.warning("Esta campaña fue rechazada por el hospital.")
+                            # Podrías agregar un botón para "Eliminar" o "Reintentar"
+
                         st.markdown("---")
-            if not found_active:
-                st.info("No tienes campañas activas o próximas en este momento.")
+            if not found_active_or_pending:
+                st.info("No tienes campañas activas, próximas o pendientes de aprobación en este momento.")
 
-            st.subheader("Campañas Finalizadas:")
-            found_finished = False
+            st.subheader("Campañas Finalizadas / Rechazadas:")
+            found_finished_or_rejected = False
             for campana in campanas_response.data:
-                if campana.get('estado_campana', '').lower() == 'finalizada':
-                    found_finished = True
-                    with st.expander(f"Campaña '{campana.get('nombre_campana', 'Sin nombre')}' - Finalizada"):
+                estado_aprobacion = campana.get('estado_aprobacion_hospital', 'Desconocido').lower()
+                estado_campana_actual = campana.get('estado_campana', 'Desconocido').lower()
+
+                if estado_campana_actual == 'finalizada' or estado_aprobacion == 'rechazada':
+                    found_finished_or_rejected = True
+                    with st.expander(f"Campaña '{campana.get('nombre_campana', 'Sin nombre')}' - Estado: {campana.get('estado_campana', 'N/A')} / Aprobación: {campana.get('estado_aprobacion_hospital', 'N/A')}"):
                         st.write(f"**Descripción:** {campana.get('descripcion', 'N/A')}")
                         st.write(f"**Fecha Inicio:** {campana.get('fecha_inicio', 'N/A')}")
                         st.write(f"**Fecha Límite:** {campana.get('fecha_fin', 'N/A')}")
@@ -406,9 +423,10 @@ def mis_campanas_tab():
                         hospital_name = hospital_names_map.get(hospital_id, 'Hospital Desconocido')
                         st.write(f"**Hospital:** {hospital_name}")
                         
-                        st.write(f"**Estado:** `{campana.get('estado_campana', 'N/A')}`")
-            if not found_finished:
-                st.info("No tienes campañas finalizadas.")
+                        st.write(f"**Estado de Campaña:** `{campana.get('estado_campana', 'N/A')}`")
+                        st.write(f"**Estado de Aprobación Hospital:** `{campana.get('estado_aprobacion_hospital', 'N/A')}`")
+            if not found_finished_or_rejected:
+                st.info("No tienes campañas finalizadas o rechazadas.")
 
 
         else:
