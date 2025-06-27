@@ -289,6 +289,122 @@ def finalizar_campana_solidaria(campana_id):
         return False
 
 
+# --- Nuevas funciones para la gestión de solicitudes de campaña por el hospital ---
+
+def obtener_solicitudes_campana_pendientes(hospital_id):
+    """Obtiene las solicitudes de campaña de beneficiarios que están pendientes de aprobación."""
+    if supabase_client is None:
+        return []
+    try:
+        response = supabase_client.table("campana").select("id_campana, nombre_campana, descripcion, fecha_inicio, fecha_fin, id_beneficiario, estado_campana").eq("id_hospital", hospital_id).eq("estado_aprobacion_hospital", "Pendiente").order("fecha_inicio", desc=False).execute()
+        if response.data:
+            return response.data
+        else:
+            return []
+    except Exception as e:
+        st.error(f"❌ Error al obtener solicitudes de campaña pendientes: {e}")
+        return []
+
+def obtener_nombre_beneficiario(beneficiario_id):
+    """Obtiene el nombre de un beneficiario dado su ID."""
+    if supabase_client is None:
+        return "Desconocido"
+    try:
+        response = supabase_client.table("beneficiario").select("nombreb").eq("id_beneficiario", beneficiario_id).limit(1).execute()
+        if response.data and response.data[0]['nombreb']:
+            return response.data[0]['nombreb']
+        else:
+            return "Beneficiario Desconocido"
+    except Exception as e:
+        # st.error(f"Error al obtener nombre del beneficiario {beneficiario_id}: {e}") # Comentado para evitar spam de errores si muchos beneficiarios no tienen nombre
+        return "Beneficiario Desconocido"
+
+def aceptar_solicitud_campana(campana_id):
+    """Actualiza el estado de una campaña a 'Aprobada' y 'En Curso'."""
+    if supabase_client is None:
+        st.error("Conexión a Supabase no disponible. No se puede aceptar la solicitud.")
+        return False
+    try:
+        response = supabase_client.table("campana").update({
+            "estado_aprobacion_hospital": "Aprobada",
+            "estado_campana": "En Curso" # La campaña se activa cuando es aprobada
+        }).eq("id_campana", campana_id).execute()
+        
+        if response.data:
+            st.success(f"✅ Solicitud de campaña {campana_id} **APROBADA** con éxito. La campaña ya está activa para donantes.")
+            return True
+        else:
+            st.error(f"❌ Error al aceptar solicitud de campaña: {response.status_code} - {response.text}")
+            return False
+    except Exception as e:
+        st.error(f"❌ Error inesperado al aceptar solicitud: {e}")
+        return False
+
+def rechazar_solicitud_campana(campana_id):
+    """Actualiza el estado de una campaña a 'Rechazada'."""
+    if supabase_client is None:
+        st.error("Conexión a Supabase no disponible. No se puede rechazar la solicitud.")
+        return False
+    try:
+        response = supabase_client.table("campana").update({
+            "estado_aprobacion_hospital": "Rechazada",
+            "estado_campana": "Rechazada" # La campaña también cambia su estado principal a rechazada
+        }).eq("id_campana", campana_id).execute()
+        
+        if response.data:
+            st.warning(f"🚫 Solicitud de campaña {campana_id} **RECHAZADA** con éxito.")
+            return True
+        else:
+            st.error(f"❌ Error al rechazar solicitud de campaña: {response.status_code} - {response.text}")
+            return False
+    except Exception as e:
+        st.error(f"❌ Error inesperado al rechazar solicitud: {e}")
+        return False
+
+
+def hospital_solicitudes_campana():
+    st.markdown("## Solicitudes de Campaña Pendientes 📬")
+    st.markdown("---")
+    st.write("Revisa las solicitudes de campañas de donación enviadas por los beneficiarios que requieren tu aprobación.")
+
+    hospital_id_logueado = st.session_state.get("user_db_id")
+
+    if not hospital_id_logueado:
+        st.warning("⚠️ No se encontró el ID de hospital en la sesión. Por favor, asegúrate de que tu perfil de hospital esté completo y tenga un ID válido.")
+        return
+    
+    solicitudes_pendientes = obtener_solicitudes_campana_pendientes(hospital_id_logueado)
+
+    if solicitudes_pendientes:
+        for solicitud in solicitudes_pendientes:
+            campana_id = solicitud.get('id_campana')
+            nombre_beneficiario = obtener_nombre_beneficiario(solicitud.get('id_beneficiario'))
+            
+            with st.container(border=True):
+                st.markdown(f"### Solicitud: {solicitud.get('nombre_campana', 'Campaña sin nombre')}")
+                st.write(f"**De:** {nombre_beneficiario}")
+                st.write(f"**Descripción:** {solicitud.get('descripcion', 'N/A')}")
+                st.write(f"**Fecha de Inicio Solicitada:** {solicitud.get('fecha_inicio', 'N/A')}")
+                st.write(f"**Fecha Límite Solicitada:** {solicitud.get('fecha_fin', 'N/A')}")
+                st.write(f"**Estado Actual:** `{solicitud.get('estado_campana', 'N/A')}` (Aprobación: `Pendiente`)")
+
+                col_aprobar, col_rechazar = st.columns(2)
+                with col_aprobar:
+                    if st.button(f"✅ Aceptar Solicitud", key=f"aceptar_{campana_id}"):
+                        if aceptar_solicitud_campana(campana_id):
+                            st.balloons()
+                            time.sleep(1)
+                            st.rerun()
+                with col_rechazar:
+                    if st.button(f"❌ Rechazar Solicitud", key=f"rechazar_{campana_id}"):
+                        if rechazar_solicitud_campana(campana_id):
+                            time.sleep(1)
+                            st.rerun()
+            st.markdown("---")
+    else:
+        st.info("🎉 No hay solicitudes de campaña pendientes para tu hospital en este momento.")
+
+
 # --- Definición de las funciones de sección del Hospital ---
 def hospital_perfil():
     st.markdown("## Mi Perfil de Hospital 🏥")
@@ -391,7 +507,8 @@ def hospital_campanas_solidarias():
                     "fecha_inicio": fecha_inicio_campana.isoformat(),
                     "fecha_fin": fecha_fin_campana.isoformat(),
                     "estado_campana": estado_campana_seleccionado,
-                    "id_beneficiario": None # Explícitamente None para campañas de hospital
+                    "id_beneficiario": None, # Explícitamente None para campañas de hospital
+                    "estado_aprobacion_hospital": "Aprobada" # Las campañas creadas por el hospital se auto-aprueban
                 }
                 if crear_nueva_campana_solidaria(datos_campana):
                     st.balloons()
@@ -404,30 +521,32 @@ def hospital_campanas_solidarias():
 
     if campanas:
         for campana in campanas:
-            estado = campana.get("estado_campana", "N/A")
-            nombre_campana = campana.get('nombre_campana', 'Sin Nombre')
-            descripcion = campana.get('descripcion', 'N/A')
-            fecha_inicio = campana.get('fecha_inicio', 'N/A')
-            fecha_fin = campana.get('fecha_fin', 'N/A')
-            
-            conteo_inscripciones = obtener_conteo_inscripciones_campana(campana.get('id_campana'))
-
-            with st.container(border=True):
-                st.markdown(f"#### {nombre_campana}")
-                st.write(f"**Estado:** `{estado}`")
-                st.write(f"**Descripción:** {descripcion}")
-                st.write(f"**Fecha de Inicio:** {fecha_inicio}")
-                st.write(f"**Fecha de Fin:** {fecha_fin}")
-                st.write(f"**Donantes Inscriptos:** {conteo_inscripciones}")
+            # Solo mostrar campañas que son propias del hospital (id_beneficiario es None) o que ya están aprobadas
+            if campana.get('id_beneficiario') is None or campana.get('estado_aprobacion_hospital') == 'Aprobada':
+                estado = campana.get("estado_campana", "N/A")
+                nombre_campana = campana.get('nombre_campana', 'Sin Nombre')
+                descripcion = campana.get('descripcion', 'N/A')
+                fecha_inicio = campana.get('fecha_inicio', 'N/A')
+                fecha_fin = campana.get('fecha_fin', 'N/A')
                 
-                # Botón para finalizar campaña solo si no está ya finalizada
-                if estado != "Finalizada":
-                    if st.button(f"Finalizar Campaña '{nombre_campana}'", key=f"finalizar_{campana.get('id_campana')}"):
-                        if finalizar_campana_solidaria(campana.get("id_campana")):
-                            st.rerun()
-                else:
-                    st.info("Esta campaña ha sido finalizada.")
-            st.markdown("---")
+                conteo_inscripciones = obtener_conteo_inscripciones_campana(campana.get('id_campana'))
+
+                with st.container(border=True):
+                    st.markdown(f"#### {nombre_campana}")
+                    st.write(f"**Estado:** `{estado}`")
+                    st.write(f"**Descripción:** {descripcion}")
+                    st.write(f"**Fecha de Inicio:** {fecha_inicio}")
+                    st.write(f"**Fecha de Fin:** {fecha_fin}")
+                    st.write(f"**Donantes Inscriptos:** {conteo_inscripciones}")
+                    
+                    # Botón para finalizar campaña solo si no está ya finalizada
+                    if estado != "Finalizada":
+                        if st.button(f"Finalizar Campaña '{nombre_campana}'", key=f"finalizar_{campana.get('id_campana')}"):
+                            if finalizar_campana_solidaria(campana.get("id_campana")):
+                                st.rerun()
+                    else:
+                        st.info("Esta campaña ha sido finalizada.")
+                st.markdown("---")
     else:
         st.info("No hay campañas solidarias disponibles para tu hospital.")
 
@@ -462,12 +581,14 @@ def hospital_panel_page():
     st.sidebar.success(f"Sesión iniciada como: **{st.session_state['user_type']}**")
 
     # Navegación por pestañas
-    tab1, tab2 = st.tabs(["Mi Perfil", "Campañas Solidarias"])
+    tab1, tab2, tab3 = st.tabs(["Mi Perfil", "Campañas Solidarias", "Solicitudes de Campaña"]) # Nueva pestaña para solicitudes
 
     with tab1:
         hospital_perfil()
     with tab2:
         hospital_campanas_solidarias()
+    with tab3: # Nueva pestaña
+        hospital_solicitudes_campana()
 
 
 if __name__ == "__main__":
