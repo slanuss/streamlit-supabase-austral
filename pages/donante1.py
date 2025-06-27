@@ -207,13 +207,28 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+# --- Mapa de compatibilidad de sangre (DONANTE A RECEPTOR) ---
+# Este diccionario indica a qué tipos de sangre puede donar cada grupo.
+# Por ejemplo, 'O-' puede donar a todos, mientras que 'AB+' solo a 'AB+'.
+BLOOD_COMPATIBILITY_MAP = {
+    "O-": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"], # Donante Universal
+    "O+": ["A+", "B+", "AB+", "O+"],
+    "A-": ["A+", "A-", "AB+", "AB-"],
+    "A+": ["A+", "AB+"],
+    "B-": ["B+", "B-", "AB+", "AB-"],
+    "B+": ["B+", "AB+"],
+    "AB-": ["AB+", "AB-"],
+    "AB+": ["AB+"]
+}
+
+
 # --- Función para obtener datos del donante ---
 def obtener_datos_donante(donante_email):
     if supabase_client is None:
         st.error("Conexión a Supabase no disponible. No se pueden obtener datos del donante.")
         return None
     try:
-        response = supabase_client.table("donante").select("*, id_donante").eq("mail", donante_email).execute()
+        response = supabase_client.table("donante").select("*, id_donante, tipo_de_sangre").eq("mail", donante_email).execute()
         if response.data:
             return response.data[0]
         else:
@@ -243,20 +258,36 @@ def actualizar_datos_donante(donante_email, datos):
         return False
 
 
+# --- Función para obtener el tipo de sangre de un beneficiario ---
+def obtener_tipo_sangre_beneficiario(beneficiario_id):
+    if supabase_client is None:
+        return None
+    try:
+        response = supabase_client.table("beneficiario").select("tipo_de_sangre").eq("id_beneficiario", beneficiario_id).limit(1).execute()
+        if response.data and response.data[0]['tipo_de_sangre']:
+            return response.data[0]['tipo_de_sangre']
+        else:
+            return None
+    except Exception as e:
+        st.warning(f"No se pudo obtener el tipo de sangre del beneficiario {beneficiario_id}: {e}")
+        return None
+
+
 # --- Funciones de Campañas ---
 def obtener_campanas_activas():
     if supabase_client:
         try:
-            # Obtener todas las campañas, incluyendo las finalizadas para el filtro de fecha
-            response = supabase_client.table("campana").select("id_campana, nombre_campana, fecha_inicio, fecha_fin, id_hospital, id_beneficiario, descripcion, estado_campana").order("fecha_fin", desc=False).execute()
+            # Obtener todas las campañas, incluyendo 'id_beneficiario' para la compatibilidad
+            # y 'estado_aprobacion_hospital' para filtrar
+            response = supabase_client.table("campana").select("id_campana, nombre_campana, fecha_inicio, fecha_fin, id_hospital, id_beneficiario, descripcion, estado_campana, estado_aprobacion_hospital").order("fecha_fin", desc=False).execute()
             
             if response.data:
-                # Filtrar campañas activas cuya fecha_fin sea posterior o igual a hoy
                 hoy = datetime.now().date()
                 campanas_filtradas = [
-                    c for c in response.data # Corregido: Se eliminó la repetición 'c for c'
+                    c for c in response.data 
                     if c.get('estado_campana', '').lower() == 'en curso' and \
-                       c.get('fecha_fin') and datetime.strptime(c['fecha_fin'], "%Y-%m-%d").date() >= hoy
+                       c.get('fecha_fin') and datetime.strptime(c['fecha_fin'], "%Y-%m-%d").date() >= hoy and \
+                       c.get('estado_aprobacion_hospital', '').lower() == 'aprobada' # Solo campañas aprobadas por hospital
                 ]
                 return campanas_filtradas
             else:
@@ -275,7 +306,6 @@ def inscribirse_campana(campana_id: int, donante_id: int):
                 st.warning("⚠️ Ya estás inscrito en esta campaña.")
                 return False
 
-            # --- CORRECCIÓN APLICADA AQUÍ: ELIMINADO 'estado_donacion' ---
             data, count = supabase_client.table("donaciones").insert({
                 "id_campana": campana_id,
                 "id_donante": donante_id
@@ -369,7 +399,7 @@ def donante_perfil():
         valores_iniciales["nombred"] = perfil_existente.get("nombred", "")
         valores_iniciales["mail"] = perfil_existente.get("mail", email_usuario_logueado)
         valores_iniciales["telefono"] = perfil_existente.get("telefono", "")
-        valores_iniciales["direccion"] = perfil_existente.get("direccion", "")
+        valores_iniciales["direccion"] = perfil_existente.get("direccion", "") 
         valores_iniciales["edad"] = perfil_existente.get("edad", 18)
       
         sexo_db = perfil_existente.get("sexo")
@@ -454,34 +484,81 @@ def donante_campanas():
     st.write("Aquí puedes explorar las solicitudes de donación de sangre y ofrecer tu ayuda.")
 
 
-    campanas = obtener_campanas_activas()
     donante_id_logueado = st.session_state.get('user_db_id')
+    donante_email_logueado = st.session_state.get('user_email')
 
 
     if not donante_id_logueado:
         st.warning("⚠️ Para inscribirte a campañas, asegúrate de que tu perfil de donante esté completo y tenga un ID válido. Completa el formulario de 'Perfil'.")
+        return
+
+    # Obtener el tipo de sangre del donante logueado
+    donante_data = obtener_datos_donante(donante_email_logueado)
+    donante_tipo_sangre = donante_data.get('tipo_de_sangre') if donante_data else None
+
+    if not donante_tipo_sangre:
+        st.warning("⚠️ No se pudo obtener tu tipo de sangre. Por favor, completa tu perfil para ver campañas compatibles.")
+        return
+
+    st.info(f"Tu tipo de sangre registrado es: **{donante_tipo_sangre}**")
 
 
-    if campanas:
-        for campana in campanas:
+    campanas_disponibles = obtener_campanas_activas()
+    campanas_compatibles = []
+
+    if campanas_disponibles:
+        for campana in campanas_disponibles:
+            beneficiario_id = campana.get('id_beneficiario')
+            tipo_sangre_requerida = None
+
+            # Si la campaña tiene un beneficiario asociado, obtener su tipo de sangre
+            if beneficiario_id:
+                tipo_sangre_requerida = obtener_tipo_sangre_beneficiario(beneficiario_id)
+            else:
+                # Si la campaña no tiene beneficiario (ej. es una campaña de hospital),
+                # se asume que puede recibir de cualquier tipo o se filtra por un criterio específico
+                # Para este ejemplo, si no hay beneficiario, se considera universalmente compatible.
+                tipo_sangre_requerida = "Universal" # Un valor ficticio para indicar universalidad
+
+            # Verificar compatibilidad
+            if donante_tipo_sangre in BLOOD_COMPATIBILITY_MAP:
+                # Si la campaña es de un beneficiario, verificar si el tipo de sangre del donante
+                # puede donar al tipo de sangre requerido por el beneficiario.
+                if tipo_sangre_requerida != "Universal" and tipo_sangre_requerida in BLOOD_COMPATIBILITY_MAP[donante_tipo_sangre]:
+                    campanas_compatibles.append(campana)
+                # Si es una campaña "Universal" (sin beneficiario), siempre es compatible
+                elif tipo_sangre_requerida == "Universal":
+                     campanas_compatibles.append(campana)
+            else:
+                st.warning(f"Tipo de sangre '{donante_tipo_sangre}' no reconocido en el mapa de compatibilidad. Por favor, verifica tu perfil.")
+                break # Salir del bucle si el tipo de sangre del donante es inválido
+
+
+    if campanas_compatibles:
+        st.subheader("Campañas compatibles con tu tipo de sangre:")
+        for campana in campanas_compatibles:
             with st.container(border=True): # Use st.container with border for each campaign
                 campana_nombre = campana.get('nombre_campana', 'Sin Nombre')
                 beneficiario_id = campana.get('id_beneficiario')
-                tipo_sangre_beneficiario = "N/A"
+                tipo_sangre_beneficiario = "N/A" # Default para si no hay beneficiario o falla la consulta
                 if beneficiario_id and supabase_client:
-                    try:
-                        beneficiario_data = supabase_client.table("beneficiario").select("tipo_de_sangre").eq("id_beneficiario", beneficiario_id).execute()
-                        if beneficiario_data.data:
-                            tipo_sangre_beneficiario = beneficiario_data.data[0].get('tipo_de_sangre', 'N/A')
-                    except Exception as e:
-                        st.warning(f"No se pudo obtener el tipo de sangre del beneficiario para la campaña {campana_nombre}: {e}")
+                    # Aquí volvemos a obtener el tipo de sangre del beneficiario para mostrarlo,
+                    # aunque ya lo usamos para el filtro. Podría optimizarse si se guarda
+                    # el tipo de sangre directamente en el objeto campana.
+                    beneficiario_data = supabase_client.table("beneficiario").select("tipo_de_sangre").eq("id_beneficiario", beneficiario_id).execute()
+                    if beneficiario_data.data:
+                        tipo_sangre_beneficiario = beneficiario_data.data[0].get('tipo_de_sangre', 'N/A')
 
 
                 campana_id = campana.get('id_campana')
 
 
                 st.markdown(f"### Campaña: {campana_nombre}")
-                st.write(f"**Tipo de Sangre Requerida:** **{tipo_sangre_beneficiario}**")
+                if beneficiario_id: # Mostrar tipo de sangre requerido solo si es de un beneficiario
+                    st.write(f"**Tipo de Sangre Requerida:** **{tipo_sangre_beneficiario}**")
+                else:
+                    st.write(f"**Tipo de Sangre Requerida:** **Cualquiera** (Campaña solidaria del hospital)") # Mensaje para campañas sin beneficiario
+                
                 st.write(f"**Descripción:** {campana.get('descripcion', 'N/A')}")
                 st.write(f"**Fecha Límite:** {campana.get('fecha_fin', 'N/A')}")
                 st.write(f"**ID de Campaña:** `{campana_id if campana_id else 'N/A'}`")
@@ -496,7 +573,7 @@ def donante_campanas():
                     st.info("Inicia sesión y completa tu perfil para poder inscribirte.")
             st.markdown("---")
     else:
-        st.info("ℹ️ No hay campañas de donación activas en este momento. ¡Vuelve pronto!")
+        st.info("ℹ️ No hay campañas de donación compatibles con tu tipo de sangre en este momento, o no hay campañas activas aprobadas.")
 
 
 def donante_hospitales():
