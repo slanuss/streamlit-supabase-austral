@@ -638,7 +638,6 @@ def donante_hospitales():
         # Mostrar el mapa
         st_folium(m, width=700, height=500) # Ajusta width y height según necesidad
 
-        st.warning("⚠️ **Nota sobre el mapa:** El mapa ahora intenta usar las direcciones de tus hospitales. Si no aparecen o son incorrectas, verifica que tu `OPENCAGE_API_KEY` esté configurada y que las direcciones en tu base de datos sean precisas.")
         
         st.write("También puedes contactar a los siguientes hospitales directamente:")
         for hospital in hospitales:
