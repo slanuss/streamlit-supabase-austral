@@ -90,13 +90,13 @@ st.markdown("""
         padding: 0.75rem 1.25rem;
         font-weight: 600;
         transition: background-color 0.3s ease;
-        box_shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
     .stButton > button:hover {
         background-color: var(--light-red);
         color: var(--white);
-        box_shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
     }
 
     /* Estilo para text_input y text_area */
@@ -130,7 +130,7 @@ st.markdown("""
         background-color: var(--primary-red); /* Fondo de la opción seleccionada */
         color: var(--white) !important; /* Color del texto de la opción seleccionada */
         border-color: var(--primary-red);
-        box_shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
     .stRadio div[data-baseweb="radio"][aria-checked="true"] label {
         color: var(--white) !important; /* Fuerza el color del texto de la opción seleccionada */
@@ -151,7 +151,7 @@ st.markdown("""
         padding: 1.5rem;
         margin-bottom: 1rem;
         background-color: var(--white);
-        box_shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     }
 
     /* Sidebar */
@@ -361,11 +361,20 @@ def mis_campanas_tab():
             st.subheader("Campañas Pendientes de Aprobación / En Curso:")
             found_active_or_pending = False
             for campana in campanas_response.data:
-                estado_aprobacion = campana.get('estado_aprobacion_hospital', 'Desconocido').lower()
-                estado_campana_actual = campana.get('estado_campana', 'Desconocido').lower()
+                # Asegurarse de que los valores de estado son strings antes de llamar a .lower()
+                estado_aprobacion = campana.get('estado_aprobacion_hospital')
+                if estado_aprobacion is None:
+                    estado_aprobacion = 'Desconocido' # Default si es None
+                estado_aprobacion_lower = str(estado_aprobacion).lower() # Convertir a string y luego a lower
+
+                estado_campana_actual = campana.get('estado_campana')
+                if estado_campana_actual is None:
+                    estado_campana_actual = 'Desconocido' # Default si es None
+                estado_campana_actual_lower = str(estado_campana_actual).lower() # Convertir a string y luego a lower
+
 
                 # Mostrar campañas que están pendientes de aprobación o en curso (y aprobadas)
-                if estado_aprobacion == 'pendiente' or estado_campana_actual == 'en curso':
+                if estado_aprobacion_lower == 'pendiente' or estado_campana_actual_lower == 'en curso':
                     found_active_or_pending = True
                     with st.container(border=True):
                         st.markdown(f"#### {campana.get('nombre_campana', 'Campaña sin nombre')}")
@@ -381,7 +390,7 @@ def mis_campanas_tab():
                         st.write(f"**Estado de Aprobación Hospital:** `{campana.get('estado_aprobacion_hospital', 'N/A')}`")
 
                         # Opción para finalizar la campaña si está en curso y aprobada, o si está pendiente y se quiere cancelar
-                        if estado_campana_actual == 'en curso' and estado_aprobacion == 'aprobada':
+                        if estado_campana_actual_lower == 'en curso' and estado_aprobacion_lower == 'aprobada':
                             if st.button(f"Finalizar Campaña", key=f"finalizar_{campana['id_campana']}"):
                                 try:
                                     update_response = supabase_client.table("campana").update({"estado_campana": "Finalizada"}).eq("id_campana", campana['id_campana']).execute()
@@ -395,10 +404,10 @@ def mis_campanas_tab():
                                 except Exception as e:
                                     st.error(f"Error al conectar con Supabase para finalizar campaña: {e}")
                                     st.exception(e)
-                        elif estado_aprobacion == 'pendiente':
+                        elif estado_aprobacion_lower == 'pendiente':
                             st.info("Esta campaña está esperando la aprobación del hospital.")
                             # Podrías agregar un botón para "Cancelar Solicitud" si lo deseas
-                        elif estado_aprobacion == 'rechazada':
+                        elif estado_aprobacion_lower == 'rechazada':
                             st.warning("Esta campaña fue rechazada por el hospital.")
                             # Podrías agregar un botón para "Eliminar" o "Reintentar"
 
@@ -409,10 +418,19 @@ def mis_campanas_tab():
             st.subheader("Campañas Finalizadas / Rechazadas:")
             found_finished_or_rejected = False
             for campana in campanas_response.data:
-                estado_aprobacion = campana.get('estado_aprobacion_hospital', 'Desconocido').lower()
-                estado_campana_actual = campana.get('estado_campana', 'Desconocido').lower()
+                # Asegurarse de que los valores de estado son strings antes de llamar a .lower()
+                estado_aprobacion = campana.get('estado_aprobacion_hospital')
+                if estado_aprobacion is None:
+                    estado_aprobacion = 'Desconocido' # Default si es None
+                estado_aprobacion_lower = str(estado_aprobacion).lower() # Convertir a string y luego a lower
 
-                if estado_campana_actual == 'finalizada' or estado_aprobacion == 'rechazada':
+                estado_campana_actual = campana.get('estado_campana')
+                if estado_campana_actual is None:
+                    estado_campana_actual = 'Desconocido' # Default si es None
+                estado_campana_actual_lower = str(estado_campana_actual).lower() # Convertir a string y luego a lower
+
+
+                if estado_campana_actual_lower == 'finalizada' or estado_aprobacion_lower == 'rechazada':
                     found_finished_or_rejected = True
                     with st.expander(f"Campaña '{campana.get('nombre_campana', 'Sin nombre')}' - Estado: {campana.get('estado_campana', 'N/A')} / Aprobación: {campana.get('estado_aprobacion_hospital', 'N/A')}"):
                         st.write(f"**Descripción:** {campana.get('descripcion', 'N/A')}")
