@@ -653,8 +653,7 @@ def donante_hospitales():
     else:
         st.info("ℹ️ No se encontraron hospitales asociados en la base de datos en este momento.")
 
-    st.info("💡 **Consejo:** Para futuras mejoras, podemos volver a implementar un mapa interactivo una vez que las dependencias estén estables.")
-
+    
 
 def donante_requisitos():
     st.markdown("## Requisitos para Donar Sangre ✅")
