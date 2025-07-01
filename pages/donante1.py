@@ -570,9 +570,9 @@ def donante_campanas():
 
                 st.markdown(f"### Campaña: {campana_nombre}")
                 if beneficiario_id: # Mostrar tipo de sangre requerido solo si es de un beneficiario
-                    st.write(f"**Tipo de Sangre Requerida:** **{tipo_sangre_beneficiario}**")
+                    st.write(f"**Tipo de Sangre Compatible con:** **{tipo_sangre_beneficiario}**") # CAMBIO AQUÍ
                 else:
-                    st.write(f"**Tipo de Sangre Requerida:** **Cualquiera** (Campaña solidaria del hospital)") # Mensaje para campañas sin beneficiario
+                    st.write(f"**Tipo de Sangre Compatible con:** **Cualquiera** (Campaña solidaria del hospital)") # Mensaje para campañas sin beneficiario
                 
                 st.write(f"**Descripción:** {campana.get('descripcion', 'N/A')}")
                 st.write(f"**Fecha Límite:** {campana.get('fecha_fin', 'N/A')}")
